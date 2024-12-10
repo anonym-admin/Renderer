@@ -160,14 +160,20 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\Common\MeshData.h" />
     <ClInclude Include="..\..\Common\Type.h" />
+    <ClInclude Include="..\..\Common\Vertex.h" />
     <ClInclude Include="..\..\Interface\IT_Renderer.h" />
+    <ClInclude Include="ConstantBuffer.h" />
     <ClInclude Include="D3DUtils.h" />
     <ClInclude Include="MeshObject.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Renderer.h" />
+    <ClInclude Include="RendererType.h" />
+    <ClInclude Include="ResourceManager.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ConstantBuffer.cpp" />
     <ClCompile Include="D3DUtils.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="MeshObject.cpp" />
@@ -178,6 +184,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="ResourceManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

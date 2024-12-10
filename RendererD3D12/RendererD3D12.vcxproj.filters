@@ -16,6 +16,12 @@
     <ClCompile Include="MeshObject.cpp">
       <Filter>Main</Filter>
     </ClCompile>
+    <ClCompile Include="ResourceManager.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
+    <ClCompile Include="ConstantBuffer.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Common\Type.h">
@@ -34,6 +40,21 @@
       <Filter>Main</Filter>
     </ClInclude>
     <ClInclude Include="MeshObject.h">
+      <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\MeshData.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\Vertex.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="ResourceManager.h">
+      <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="RendererType.h">
+      <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="ConstantBuffer.h">
       <Filter>Main</Filter>
     </ClInclude>
   </ItemGroup>

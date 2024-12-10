@@ -114,3 +114,8 @@ void D3DUtils::PrintError(ID3DBlob* error)
 		__debugbreak();
 	}
 }
+
+uint32 D3DUtils::GetRequiredConstantDataSize(uint32 originSize)
+{
+	return (originSize + 255) & ~255;
+}

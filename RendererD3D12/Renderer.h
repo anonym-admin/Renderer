@@ -8,6 +8,8 @@ Renderer
 =========
 */
 
+class ResourceManager;
+
 class Renderer : public IT_Renderer
 {
 public:
@@ -19,6 +21,8 @@ public:
 	virtual void BeginRender() override;
 	virtual void EndRender() override;
 	virtual void Present() override;
+	virtual IT_MeshObject* CreateMeshObject() override;
+	virtual void RenderMeshObject(IT_MeshObject* obj) override;
 
 	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject) override;
 	virtual ULONG STDMETHODCALLTYPE AddRef(void) override;
@@ -26,6 +30,16 @@ public:
 
 	/*Inline*/
 	inline ID3D12Device5* GetDevice() { return m_device; }
+	inline ResourceManager* GetReourceManager() { return m_resourceManager; }
+	inline uint32 GetScreenWidth() { return m_screenWidth; }
+	inline uint32 GetScreenHegiht() { return m_screenHeight; }
+	inline float GetAspectRatio() { return static_cast<float>(m_screenWidth) / m_screenHeight; }
+	void GetViewProjMatrix(Matrix* viewMat, Matrix* projMat);
+
+	void InitCamera();
+	void SetCameraPos(float x, float y, float z);
+	void SetCameraPos(Vector3 camPos);
+	void GpuCompleted();
 
 private:
 	void CleanUp();
@@ -41,6 +55,9 @@ private:
 	void DestroyFence();
 	void Fence();
 	void WaitForGpu(uint64 expectedValue);
+
+	void SetCamera(Vector3 camPos, Vector3 camDir);
+	void SetCamera(float x, float y, float z, float dirX, float dirY, float dirZ);
 
 private:
 	const static uint32 FRAME_COUNT = 2;
@@ -69,5 +86,11 @@ private:
 	uint32 m_srvDescriptorSize = 0;
 	uint64 m_fenceValue = 0;
 	uint32 m_syncInterval = 0;
+	Matrix m_viewRow = Matrix();
+	Matrix m_projRow = Matrix();
+	Vector3 m_camPos = Vector3(0.0f);
+	Vector3 m_camDir = Vector3(0.0f);
+
+	ResourceManager* m_resourceManager = nullptr;
 };
 

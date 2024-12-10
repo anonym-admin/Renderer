@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "Renderer.h"
+#include "MeshObject.h"
+#include "ResourceManager.h"
 
 /*
 =========
@@ -93,6 +95,10 @@ bool Renderer::Initialize(HWND hwnd)
 		D3DUtils::SetDebugLayerInfo(m_device);
 	}
 
+	// Create managers.
+	m_resourceManager = new ResourceManager;
+	m_resourceManager->Initialize(m_device);
+
 	// Create the command queue.
 	{
 		D3D12_COMMAND_QUEUE_DESC cmdQueueDesc = {};
@@ -167,6 +173,9 @@ bool Renderer::Initialize(HWND hwnd)
 	CreateCommandList();
 	// Create the fence.
 	CreateFence();
+
+	// Initialize the camera.
+	InitCamera();
 	
 	if (adapter)
 	{
@@ -191,6 +200,9 @@ void Renderer::BeginRender()
 {
 	ThrowIfFailed(m_cmdAllocator->Reset());
 	ThrowIfFailed(m_cmdList->Reset(m_cmdAllocator, nullptr));
+
+	m_cmdList->RSSetViewports(1, &m_viewPort);
+	m_cmdList->RSSetScissorRects(1, &m_scissorRect);
 
 	m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
@@ -232,6 +244,45 @@ void Renderer::Present()
 	WaitForGpu(m_fenceValue);
 }
 
+IT_MeshObject* Renderer::CreateMeshObject()
+{
+	MeshObject* meshObj = new MeshObject;
+	meshObj->Initialize(this);
+	return meshObj;
+}
+
+void Renderer::RenderMeshObject(IT_MeshObject* obj)
+{
+	MeshObject* meshObj = (MeshObject*)obj;
+	meshObj->Draw(m_cmdList, Matrix());
+}
+
+void Renderer::GetViewProjMatrix(Matrix* viewMat, Matrix* projMat)
+{
+	*viewMat = m_viewRow.Transpose();
+	*projMat = m_projRow.Transpose();
+}
+
+void Renderer::InitCamera()
+{
+	m_camPos = Vector3(0.0f, 0.0f, -1.0f);
+	m_camDir = Vector3(0.0f, 0.0f, 1.0f);
+	SetCamera(m_camPos, m_camDir);
+}
+
+void Renderer::SetCameraPos(float x, float y, float z)
+{
+}
+
+void Renderer::SetCameraPos(Vector3 camPos)
+{
+}
+
+void Renderer::GpuCompleted()
+{
+	WaitForGpu(m_fenceValue);
+}
+
 void Renderer::CleanUp()
 {
 	Fence();
@@ -263,6 +314,13 @@ void Renderer::CleanUp()
 		m_cmdQueue->Release();
 		m_cmdQueue = nullptr;
 	}
+
+	if (m_resourceManager)
+	{
+		delete m_resourceManager;
+		m_resourceManager = nullptr;
+	}
+
 	if (m_device)
 	{
 		uint32 refCount = m_device->Release();
@@ -432,7 +490,7 @@ void Renderer::DestroyFence()
 
 void Renderer::Fence()
 {
-	uint64 curFenceValue = m_fenceValue++;
+	uint64 curFenceValue = ++m_fenceValue;
 	m_cmdQueue->Signal(m_fence, m_fenceValue);
 }
 
@@ -444,4 +502,27 @@ void Renderer::WaitForGpu(uint64 expectedValue)
 		m_fence->SetEventOnCompletion(expectedValue, m_fenceEvent);
 		::WaitForSingleObject(m_fenceEvent, INFINITE);
 	}
+}
+
+void Renderer::SetCamera(Vector3 camPos, Vector3 camDir)
+{
+	m_camPos = camPos;
+	m_camDir = camDir;
+	Vector3 up = Vector3(0.0f, 1.0f, 0.0);
+
+	m_viewRow = XMMatrixLookToLH(m_camPos, m_camDir, up);
+	
+	constexpr float fov = XMConvertToRadians(120.0f);
+	float aspect = GetAspectRatio();
+	float nearZ = 0.01f;
+	float farZ = 1000.0f;
+
+	m_projRow = XMMatrixPerspectiveFovLH(fov, aspect, nearZ, farZ);
+}
+
+void Renderer::SetCamera(float x, float y, float z, float dirX, float dirY, float dirZ)
+{
+	m_camPos = Vector3(x, y, z);
+	m_camDir = Vector3(dirX, dirY, dirZ);
+	SetCamera(m_camPos, m_camDir);
 }

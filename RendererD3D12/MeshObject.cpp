@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "MeshObject.h"
 #include "Renderer.h"
+#include "ResourceManager.h"
+#include "ConstantBuffer.h"
 
 /*
 ================
@@ -8,10 +10,13 @@ Mesh Object
 ================
 */
 
-uint32 MeshObject::sm_refCount = 0;
+uint32 MeshObject::sm_initRefCount;
+ID3D12RootSignature* MeshObject::sm_rootSignature;
+ID3D12PipelineState* MeshObject::sm_pipelineState;
 
 MeshObject::MeshObject()
 {
+	m_refCount++;
 }
 
 MeshObject::~MeshObject()
@@ -23,13 +28,87 @@ bool MeshObject::Initialize(Renderer* renderer)
 {
 	m_renderer = renderer;
 
+	ID3D12Device5* device = m_renderer->GetDevice();
+
 	bool result = true;
-	if (sm_refCount == 0)
+	if (sm_initRefCount == 0)
 	{
 		result = InitPipeline();
 	}
-	sm_refCount++;
+
+	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+	heapDesc.NumDescriptors = 1;
+	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_cbvHeap));
+
+	m_constantBuffer = new ConstantBuffer;
+	m_constantBuffer->Initialize(m_renderer->GetDevice(), sizeof(MeshConstData), m_cbvHeap->GetCPUDescriptorHandleForHeapStart());
+
+	sm_initRefCount++;
 	return result;
+}
+
+void MeshObject::Draw(ID3D12GraphicsCommandList* cmdList, Matrix worldRow)
+{
+	Matrix viewMat, projMat;
+	m_renderer->GetViewProjMatrix(&viewMat, &projMat);
+	
+	m_constData.world = worldRow.Transpose();
+	m_constData.view = viewMat;
+	m_constData.projection = projMat;
+
+	m_constantBuffer->Upload(&m_constData);
+
+	cmdList->SetGraphicsRootSignature(sm_rootSignature);
+	cmdList->SetDescriptorHeaps(1, &m_cbvHeap);
+	cmdList->SetPipelineState(sm_pipelineState);
+	cmdList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
+	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	for (uint32 i = 0; i < m_numMeshes; i++)
+	{
+		cmdList->IASetVertexBuffers(0, 1, &m_meshes[i].vertexBufferView);
+		cmdList->IASetIndexBuffer(&m_meshes[i].indexBufferView);
+		cmdList->DrawIndexedInstanced(m_meshes[i].numIndices, 1, 0, 0, 0);
+	}
+}
+
+void MeshObject::CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle)
+{
+	ResourceManager* resoureManager = m_renderer->GetReourceManager();
+
+	ID3D12Resource* vertexBuffer = nullptr;
+	ID3D12Resource* indexBuffer = nullptr;
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
+	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
+
+	MeshData* meshDatas = mgHandle->meshes;
+	uint32 numMeshes = mgHandle->numMeshes;
+
+	m_meshes = new MESH[numMeshes];
+	MESH* meshes = new MESH[numMeshes];
+
+	for (uint32 i = 0; i < numMeshes; i++)
+	{
+		resoureManager->CreateVertexBuffer(sizeof(Vertex), meshDatas[i].numVertices, meshDatas[i].vertices, &vertexBufferView, &vertexBuffer);
+		meshes[i].vertexBuffer = vertexBuffer;
+		meshes[i].vertexBufferView = vertexBufferView;
+
+		resoureManager->CreateIndexBuffer(sizeof(uint32), meshDatas[i].numIndices, meshDatas[i].indices, &indexBufferView, &indexBuffer);
+		meshes[i].indexBuffer = indexBuffer;
+		meshes[i].indexBufferView = indexBufferView;
+		meshes[i].numIndices = meshDatas[i].numIndices;
+	}
+	
+	m_numMeshes = numMeshes;
+
+	MESH* dest = m_meshes;
+	MESH* src = meshes;
+	memcpy(dest, src, sizeof(MESH) * numMeshes);
+
+	delete[] meshes;
+	meshes = nullptr;
 }
 
 HRESULT __stdcall MeshObject::QueryInterface(REFIID riid, void** ppvObject)
@@ -39,13 +118,13 @@ HRESULT __stdcall MeshObject::QueryInterface(REFIID riid, void** ppvObject)
 
 ULONG __stdcall MeshObject::AddRef(void)
 {
-	uint32 refCount = ++sm_refCount;
+	uint32 refCount = ++m_refCount;
 	return refCount;
 }
 
 ULONG __stdcall MeshObject::Release(void)
 {
-	uint32 refCount = --sm_refCount;
+	uint32 refCount = --m_refCount;
 	if (refCount == 0)
 	{
 		delete this;
@@ -55,7 +134,47 @@ ULONG __stdcall MeshObject::Release(void)
 
 void MeshObject::CleanUp()
 {
-	CleanUpPipeline();
+	m_renderer->GpuCompleted();
+
+	if (m_cbvHeap)
+	{
+		m_cbvHeap->Release();
+		m_cbvHeap = nullptr;
+	}
+
+	if (m_constantBuffer)
+	{
+		m_constantBuffer->CleanUp();
+		delete m_constantBuffer;
+		m_constantBuffer = nullptr;
+	}
+
+	if (m_meshes)
+	{
+		for (uint32 i = 0; i < m_numMeshes; i++)
+		{
+			if (m_meshes[i].vertexBuffer)
+			{
+				m_meshes[i].vertexBuffer->Release();
+				m_meshes[i].vertexBuffer = nullptr;
+			}
+			if (m_meshes[i].indexBuffer)
+			{
+				m_meshes[i].indexBuffer->Release();
+				m_meshes[i].indexBuffer = nullptr;
+			}
+		}
+
+		delete[] m_meshes;
+		m_meshes = nullptr;
+	}
+
+
+	uint32 refCount = --sm_initRefCount;
+	if (refCount == 0)
+	{
+		CleanUpPipeline();
+	}
 }
 
 bool MeshObject::InitPipeline()
@@ -117,7 +236,7 @@ void MeshObject::CreateRootSignature()
 	ThrowIfFailed(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error));
 	D3DUtils::PrintError(error);
 
-	ThrowIfFailed(device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
+	ThrowIfFailed(device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&sm_rootSignature)));
 
 	if (signature)
 	{
@@ -154,7 +273,7 @@ void MeshObject::CreatePipelineState()
 		__debugbreak();
 	}
 
-	if (FAILED(D3DCompileFromFile(L"../../Shader/BasicShader.hlsl", nullptr, nullptr, "PSMain", "vs_5_0", compileFlags, 0, &pixelShader, &error)))
+	if (FAILED(D3DCompileFromFile(L"../../Shader/BasicShader.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, &error)))
 	{
 		if (error != nullptr)
 		{
@@ -167,14 +286,14 @@ void MeshObject::CreatePipelineState()
 	D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,	0, 28,	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,	0, 24,	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 
 	// Create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
-	psoDesc.pRootSignature = m_rootSignature;
+	psoDesc.pRootSignature = sm_rootSignature;
 	psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader->GetBufferPointer(), vertexShader->GetBufferSize());
 	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader->GetBufferPointer(), pixelShader->GetBufferSize());
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
@@ -190,7 +309,7 @@ void MeshObject::CreatePipelineState()
 	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	psoDesc.SampleDesc.Count = 1;
-	ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
+	ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&sm_pipelineState)));
 
 	if (vertexShader)
 	{
@@ -211,18 +330,18 @@ void MeshObject::CreatePipelineState()
 
 void MeshObject::DestroyRootSignature()
 {
-	if (m_rootSignature)
+	if (sm_rootSignature)
 	{
-		m_rootSignature->Release();
-		m_rootSignature = nullptr;
+		sm_rootSignature->Release();
+		sm_rootSignature = nullptr;
 	}
 }
 
 void MeshObject::DestroyPipelineState()
 {
-	if (m_pipelineState)
+	if (sm_pipelineState)
 	{
-		m_pipelineState->Release();
-		m_pipelineState = nullptr;
+		sm_pipelineState->Release();
+		sm_pipelineState = nullptr;
 	}
 }
