@@ -109,6 +109,11 @@ void MeshObject::CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle)
 	MeshData* meshDatas = mgHandle->meshes;
 	uint32 numMeshes = mgHandle->numMeshes;
 
+	if (numMeshes > MAX_MESH_DATA_COUNT_PER_OBJ)
+	{
+		__debugbreak();
+	}
+
 	m_meshes = new MESH[numMeshes];
 	MESH* meshes = new MESH[numMeshes];
 

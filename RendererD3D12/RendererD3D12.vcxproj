@@ -170,11 +170,13 @@
     <ClInclude Include="D3DUtils.h" />
     <ClInclude Include="DescriptorPool.h" />
     <ClInclude Include="DescriptorAllocator.h" />
+    <ClInclude Include="FontManager.h" />
     <ClInclude Include="MeshObject.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RendererType.h" />
     <ClInclude Include="ResourceManager.h" />
+    <ClInclude Include="SpriteObject.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ConstantBuffer.cpp" />
@@ -184,6 +186,7 @@
     <ClCompile Include="DescriptorPool.cpp" />
     <ClCompile Include="DescriptorAllocator.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="FontManager.cpp" />
     <ClCompile Include="MeshObject.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -193,6 +196,7 @@
     </ClCompile>
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
+    <ClCompile Include="SpriteObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

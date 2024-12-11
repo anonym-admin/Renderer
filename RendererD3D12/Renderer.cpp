@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Renderer.h"
 #include "MeshObject.h"
+#include "FontManager.h"
 #include "ResourceManager.h"
 #include "ConstantBufferManager.h"
 #include "DescriptorAllocator.h"
@@ -21,7 +22,7 @@ Renderer::~Renderer()
 	CleanUp();
 }
 
-bool Renderer::Initialize(HWND hwnd)
+bool Renderer::Initialize(HWND hwnd, bool enableDebugLayer, bool enableGBV)
 {
 	ID3D12Debug* debugController = nullptr;
 	IDXGIFactory4* factory = nullptr;
@@ -29,21 +30,28 @@ bool Renderer::Initialize(HWND hwnd)
 
 	// Debug layer.
 	uint32 dxgiFactoryFlags = 0;
-	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
+	if (enableDebugLayer)
 	{
-		debugController->EnableDebugLayer();
-
-		// Enable additional debug layers.
-		dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
-
-		ID3D12Debug5* debugController5 = nullptr;
-		if (SUCCEEDED(debugController->QueryInterface(IID_PPV_ARGS(&debugController5))))
+		if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
 		{
-			debugController5->SetEnableGPUBasedValidation(true);
-			debugController5->SetEnableAutoName(true);
-			debugController5->Release();
+			debugController->EnableDebugLayer();
+
+			// Enable additional debug layers.
+			dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
+
+			if (enableGBV)
+			{
+				ID3D12Debug5* debugController5 = nullptr;
+				if (SUCCEEDED(debugController->QueryInterface(IID_PPV_ARGS(&debugController5))))
+				{
+					debugController5->SetEnableGPUBasedValidation(true);
+					debugController5->SetEnableAutoName(true);
+					debugController5->Release();
+				}
+			}
 		}
 	}
+
 	// Create DXGFactory.
 	ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory)));
 
@@ -88,25 +96,13 @@ bool Renderer::Initialize(HWND hwnd)
 	}
 
 	m_hwnd = hwnd;
+	m_dpi = static_cast<float>(::GetDpiForWindow(m_hwnd));
 	m_adapterDesc = adapterDesc;
 
 	if (debugController)
 	{
 		D3DUtils::SetDebugLayerInfo(m_device);
 	}
-
-	// Create the descriptor allocator.
-	m_descriptorAllocator = new DescriptorAllocator;
-	m_descriptorAllocator->Initialize(m_device, MAX_DESCRIPTOR_COUNT);
-	// Create the desciptor pool.
-	m_descriptorPool = new DescriptorPool;
-	m_descriptorPool->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME * MeshObject::MAX_DESCRIPTOR_COUNT_FOR_DRAW);
-	// Create the resource manager.
-	m_resourceManager = new ResourceManager;
-	m_resourceManager->Initialize(m_device);
-	// Create the constant buffer manager.
-	m_constantBufferManager = new ConstantBufferManager;
-	m_constantBufferManager->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME);
 
 	// Create the command queue.
 	{
@@ -116,6 +112,22 @@ bool Renderer::Initialize(HWND hwnd)
 		cmdQueueDesc.NodeMask = 0;
 		m_device->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(&m_cmdQueue));
 	}
+
+	// Create the descriptor allocator.
+	m_descriptorAllocator = new DescriptorAllocator;
+	m_descriptorAllocator->Initialize(m_device, MAX_DESCRIPTOR_COUNT);
+	// Create the desciptor pool.
+	m_descriptorPool = new DescriptorPool;
+	m_descriptorPool->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME * MeshObject::MAX_DESCRIPTOR_COUNT_FOR_DRAW);
+	// Create the font manager.
+	m_fontManager = new FontManager;
+	m_fontManager->Initialize(this, m_cmdQueue, 1024, 256, enableDebugLayer);
+	// Create the resource manager.
+	m_resourceManager = new ResourceManager;
+	m_resourceManager->Initialize(m_device);
+	// Create the constant buffer manager.
+	m_constantBufferManager = new ConstantBufferManager;
+	m_constantBufferManager->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME);
 
 	RECT rect = {};
 	::GetClientRect(hwnd, &rect);
@@ -259,6 +271,11 @@ IT_MeshObject* Renderer::CreateMeshObject()
 	return meshObj;
 }
 
+IT_SpriteObject* Renderer::CreateSpriteObject()
+{
+	return nullptr;
+}
+
 void* Renderer::CreateTextureFromFile(const wchar_t* filename)
 {
 	TEXTURE_HANDLE* textureHandle = nullptr;
@@ -386,6 +403,11 @@ void Renderer::CleanUp()
 	{
 		delete m_resourceManager;
 		m_resourceManager = nullptr;
+	}
+	if (m_fontManager)
+	{
+		delete m_fontManager;
+		m_fontManager = nullptr;
 	}
 	if (m_descriptorPool)
 	{

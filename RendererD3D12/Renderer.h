@@ -8,6 +8,7 @@ Renderer
 =========
 */
 
+class FontManager;
 class ResourceManager;
 class ConstantBufferManager;
 class DescriptorAllocator;
@@ -24,11 +25,12 @@ public:
 	~Renderer();
 
 	/*Interface*/
-	virtual bool Initialize(HWND hwnd) override;
+	virtual bool Initialize(HWND hwnd, bool enableDebugLayer, bool enableGBV) override;
 	virtual void BeginRender() override;
 	virtual void EndRender() override;
 	virtual void Present() override;
 	virtual IT_MeshObject* CreateMeshObject() override;
+	virtual IT_SpriteObject* CreateSpriteObject() override;
 	virtual void* CreateTextureFromFile(const wchar_t* filename) override;
 	virtual void DestroyTexture(void* textureHandle) override;
 	virtual void RenderMeshObject(IT_MeshObject* obj, Matrix worldRow) override;
@@ -49,6 +51,7 @@ public:
 	inline uint32 GetScreenWidth() { return m_screenWidth; }
 	inline uint32 GetScreenHegiht() { return m_screenHeight; }
 	inline float GetAspectRatio() { return static_cast<float>(m_screenWidth) / m_screenHeight; }
+	inline float GetDpi() { return m_dpi; }
 
 	/*DLL Inner*/
 	void GetViewProjMatrix(Matrix* viewMat, Matrix* projMat);
@@ -100,9 +103,11 @@ private:
 	Vector3 m_camPos = Vector3(0.0f);
 	Vector3 m_camDir = Vector3(0.0f);
 
+	FontManager* m_fontManager = nullptr;
 	ResourceManager* m_resourceManager = nullptr;
 	ConstantBufferManager* m_constantBufferManager = nullptr;
 	DescriptorAllocator* m_descriptorAllocator = nullptr;
 	DescriptorPool* m_descriptorPool = nullptr;
+	float m_dpi = 0.0f;
 };
 

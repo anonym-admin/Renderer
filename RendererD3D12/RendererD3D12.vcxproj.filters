@@ -34,6 +34,12 @@
     <ClCompile Include="ConstantBufferManager.cpp">
       <Filter>Main</Filter>
     </ClCompile>
+    <ClCompile Include="SpriteObject.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
+    <ClCompile Include="FontManager.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Common\Type.h">
@@ -79,6 +85,12 @@
       <Filter>Main</Filter>
     </ClInclude>
     <ClInclude Include="ConstantBufferManager.h">
+      <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="SpriteObject.h">
+      <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="FontManager.h">
       <Filter>Main</Filter>
     </ClInclude>
   </ItemGroup>
