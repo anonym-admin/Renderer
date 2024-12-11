@@ -12,11 +12,8 @@ Renderer
 =========
 */
 
-uint32 Renderer::sm_refCount = 0;
-
 Renderer::Renderer()
 {
-	sm_refCount++;
 }
 
 Renderer::~Renderer()
@@ -426,13 +423,13 @@ HRESULT __stdcall Renderer::QueryInterface(REFIID riid, void** ppvObject)
 
 ULONG __stdcall Renderer::AddRef(void)
 {
-	uint32 refCount = ++sm_refCount;
+	uint32 refCount = ++m_refCount;
 	return refCount;
 }
 
 ULONG __stdcall Renderer::Release(void)
 {
-	uint32 refCount = --sm_refCount;
+	uint32 refCount = --m_refCount;
 	if (refCount == 0)
 	{
 		delete this;

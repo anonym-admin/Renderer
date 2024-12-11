@@ -191,7 +191,6 @@ void MeshObject::CleanUp()
 		m_meshes = nullptr;
 	}
 
-
 	uint32 refCount = --sm_initRefCount;
 	if (refCount == 0)
 	{

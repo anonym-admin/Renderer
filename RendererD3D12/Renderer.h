@@ -71,7 +71,7 @@ private:
 	void WaitForGpu(uint64 expectedValue);
 
 private:
-	static uint32 sm_refCount;
+	uint32 m_refCount = 1;
 	HWND m_hwnd = nullptr;
 	HANDLE m_fenceEvent = nullptr;
 	ID3D12Device5* m_device = nullptr;
