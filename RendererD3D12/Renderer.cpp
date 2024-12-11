@@ -172,8 +172,6 @@ bool Renderer::Initialize(HWND hwnd)
 		rtvHandle.Offset(1, m_rtvDescriptorSize);
 	}
 
-	m_srvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
 	// Create dsv descriptor heap.
 	CreateDescriptorHeapForDsv();
 	CreateDepthStencilView(screenWidth, screenHeight);

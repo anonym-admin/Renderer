@@ -93,7 +93,6 @@ private:
 	uint32 m_screenHeight = 0;
 	uint32 m_rtvDescriptorSize = 0;
 	uint32 m_dsvDescriptorSize = 0;
-	uint32 m_srvDescriptorSize = 0;
 	uint64 m_fenceValue = 0;
 	uint32 m_syncInterval = 0; // Vsync on:1/off:0
 	Matrix m_viewRow = Matrix();
