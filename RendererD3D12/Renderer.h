@@ -22,8 +22,11 @@ public:
 	virtual void EndRender() override;
 	virtual void Present() override;
 	virtual IT_MeshObject* CreateMeshObject() override;
-	virtual void RenderMeshObject(IT_MeshObject* obj) override;
-
+	virtual void RenderMeshObject(IT_MeshObject* obj, Matrix worldRow) override;
+	virtual void SetCameraPos(float x, float y, float z) override;
+	virtual void SetCameraPos(Vector3 camPos) override;
+	virtual void SetCamera(Vector3 camPos, Vector3 camDir) override;
+	virtual void SetCamera(float x, float y, float z, float dirX, float dirY, float dirZ) override;
 	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject) override;
 	virtual ULONG STDMETHODCALLTYPE AddRef(void) override;
 	virtual ULONG STDMETHODCALLTYPE Release(void) override;
@@ -35,10 +38,7 @@ public:
 	inline uint32 GetScreenHegiht() { return m_screenHeight; }
 	inline float GetAspectRatio() { return static_cast<float>(m_screenWidth) / m_screenHeight; }
 	void GetViewProjMatrix(Matrix* viewMat, Matrix* projMat);
-
 	void InitCamera();
-	void SetCameraPos(float x, float y, float z);
-	void SetCameraPos(Vector3 camPos);
 	void GpuCompleted();
 
 private:
@@ -55,9 +55,6 @@ private:
 	void DestroyFence();
 	void Fence();
 	void WaitForGpu(uint64 expectedValue);
-
-	void SetCamera(Vector3 camPos, Vector3 camDir);
-	void SetCamera(float x, float y, float z, float dirX, float dirY, float dirZ);
 
 private:
 	const static uint32 FRAME_COUNT = 2;

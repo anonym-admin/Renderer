@@ -251,10 +251,10 @@ IT_MeshObject* Renderer::CreateMeshObject()
 	return meshObj;
 }
 
-void Renderer::RenderMeshObject(IT_MeshObject* obj)
+void Renderer::RenderMeshObject(IT_MeshObject* obj, Matrix worldRow)
 {
 	MeshObject* meshObj = (MeshObject*)obj;
-	meshObj->Draw(m_cmdList, Matrix());
+	meshObj->Draw(m_cmdList, worldRow);
 }
 
 void Renderer::GetViewProjMatrix(Matrix* viewMat, Matrix* projMat)
@@ -272,10 +272,14 @@ void Renderer::InitCamera()
 
 void Renderer::SetCameraPos(float x, float y, float z)
 {
+	m_camPos = Vector3(x, y, z);
+	SetCamera(m_camPos, m_camDir);
 }
 
 void Renderer::SetCameraPos(Vector3 camPos)
 {
+	m_camPos = camPos;
+	SetCamera(m_camPos, m_camDir);
 }
 
 void Renderer::GpuCompleted()

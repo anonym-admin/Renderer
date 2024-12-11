@@ -111,6 +111,11 @@ void MeshObject::CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle)
 	meshes = nullptr;
 }
 
+void MeshObject::SetTransform(Matrix worldRow)
+{
+	m_constData.world = worldRow.Transpose();
+}
+
 HRESULT __stdcall MeshObject::QueryInterface(REFIID riid, void** ppvObject)
 {
 	return E_NOTIMPL;

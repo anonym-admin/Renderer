@@ -23,6 +23,7 @@ public:
 
 	/*Interface*/
 	virtual void CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle);
+	virtual void SetTransform(Matrix worldRow);
 	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject);
 	virtual ULONG STDMETHODCALLTYPE AddRef(void);
 	virtual ULONG STDMETHODCALLTYPE Release(void);
