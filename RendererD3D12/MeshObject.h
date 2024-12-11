@@ -46,7 +46,7 @@ private:
 	MESH* m_meshes = nullptr;
 	uint32 m_numMeshes = 0;
 	ID3D12DescriptorHeap* m_cbvHeap = nullptr;
-	MeshConstData m_constData = {};
+	MESH_CONST_DATA m_constData = {};
 	ConstantBuffer* m_constantBuffer = nullptr;
 };
 

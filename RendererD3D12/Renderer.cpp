@@ -2,6 +2,7 @@
 #include "Renderer.h"
 #include "MeshObject.h"
 #include "ResourceManager.h"
+#include "DescriptorAllocator.h"
 
 /*
 =========
@@ -94,6 +95,10 @@ bool Renderer::Initialize(HWND hwnd)
 	{
 		D3DUtils::SetDebugLayerInfo(m_device);
 	}
+
+	// Create the descriptor allocator.
+	m_descriptorAllocator = new DescriptorAllocator;
+	m_descriptorAllocator->Initialize(m_device, 4096);
 
 	// Create managers.
 	m_resourceManager = new ResourceManager;
@@ -251,6 +256,57 @@ IT_MeshObject* Renderer::CreateMeshObject()
 	return meshObj;
 }
 
+void* Renderer::CreateTextureFromFile(const wchar_t* filename)
+{
+	TEXTURE_HANDLE* textureHandle = nullptr;
+	ID3D12Resource* texResource = nullptr;
+	D3D12_RESOURCE_DESC resDesc = {};
+	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
+
+	m_resourceManager->CreateTextureFromFile(&texResource, &resDesc, filename);
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = resDesc.Format;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels = resDesc.MipLevels;
+
+	m_descriptorAllocator->AllocateDescriptorHeap(&srv);
+	m_device->CreateShaderResourceView(texResource, &srvDesc, srv);
+
+	textureHandle = new TEXTURE_HANDLE;
+	::memset(textureHandle, 0, sizeof(TEXTURE_HANDLE));
+	textureHandle->textureResource = texResource;
+	textureHandle->srv = srv;
+
+	return textureHandle;
+}
+
+void Renderer::DestroyTexture(void* textureHandle)
+{
+	TEXTURE_HANDLE* texHandle = (TEXTURE_HANDLE*)textureHandle;
+
+	if (texHandle)
+	{
+		if (texHandle->textureResource)
+		{
+			texHandle->textureResource->Release();
+			texHandle->textureResource = nullptr;
+		}
+		if (texHandle->uploadBuffer)
+		{
+			texHandle->uploadBuffer->Release();
+			texHandle->uploadBuffer = nullptr;
+		}
+		if (texHandle->srv.ptr)
+		{
+			m_descriptorAllocator->FreeDecriptorHeap(texHandle->srv);
+		}
+
+		delete texHandle;
+	}
+}
+
 void Renderer::RenderMeshObject(IT_MeshObject* obj, Matrix worldRow)
 {
 	MeshObject* meshObj = (MeshObject*)obj;
@@ -318,13 +374,16 @@ void Renderer::CleanUp()
 		m_cmdQueue->Release();
 		m_cmdQueue = nullptr;
 	}
-
 	if (m_resourceManager)
 	{
 		delete m_resourceManager;
 		m_resourceManager = nullptr;
 	}
-
+	if (m_descriptorAllocator)
+	{
+		delete m_descriptorAllocator;
+		m_descriptorAllocator = nullptr;
+	}
 	if (m_device)
 	{
 		uint32 refCount = m_device->Release();

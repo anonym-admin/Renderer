@@ -43,7 +43,7 @@ bool MeshObject::Initialize(Renderer* renderer)
 	device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_cbvHeap));
 
 	m_constantBuffer = new ConstantBuffer;
-	m_constantBuffer->Initialize(m_renderer->GetDevice(), sizeof(MeshConstData), m_cbvHeap->GetCPUDescriptorHandleForHeapStart());
+	m_constantBuffer->Initialize(m_renderer->GetDevice(), sizeof(MESH_CONST_DATA), m_cbvHeap->GetCPUDescriptorHandleForHeapStart());
 
 	sm_initRefCount++;
 	return result;
@@ -64,10 +64,10 @@ void MeshObject::Draw(ID3D12GraphicsCommandList* cmdList, Matrix worldRow)
 	cmdList->SetDescriptorHeaps(1, &m_cbvHeap);
 	cmdList->SetPipelineState(sm_pipelineState);
 	cmdList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
-	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	for (uint32 i = 0; i < m_numMeshes; i++)
 	{
+		cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		cmdList->IASetVertexBuffers(0, 1, &m_meshes[i].vertexBufferView);
 		cmdList->IASetIndexBuffer(&m_meshes[i].indexBufferView);
 		cmdList->DrawIndexedInstanced(m_meshes[i].numIndices, 1, 0, 0, 0);
@@ -92,20 +92,20 @@ void MeshObject::CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle)
 	for (uint32 i = 0; i < numMeshes; i++)
 	{
 		resoureManager->CreateVertexBuffer(sizeof(Vertex), meshDatas[i].numVertices, meshDatas[i].vertices, &vertexBufferView, &vertexBuffer);
-		meshes[i].vertexBuffer = vertexBuffer;
-		meshes[i].vertexBufferView = vertexBufferView;
+		m_meshes[i].vertexBuffer = vertexBuffer;
+		m_meshes[i].vertexBufferView = vertexBufferView;
 
 		resoureManager->CreateIndexBuffer(sizeof(uint32), meshDatas[i].numIndices, meshDatas[i].indices, &indexBufferView, &indexBuffer);
-		meshes[i].indexBuffer = indexBuffer;
-		meshes[i].indexBufferView = indexBufferView;
-		meshes[i].numIndices = meshDatas[i].numIndices;
+		m_meshes[i].indexBuffer = indexBuffer;
+		m_meshes[i].indexBufferView = indexBufferView;
+		m_meshes[i].numIndices = meshDatas[i].numIndices;
 	}
 	
 	m_numMeshes = numMeshes;
 
-	MESH* dest = m_meshes;
-	MESH* src = meshes;
-	memcpy(dest, src, sizeof(MESH) * numMeshes);
+	//MESH* dest = m_meshes;
+	//MESH* src = meshes;
+	//memcpy(dest, src, sizeof(MESH) * numMeshes);
 
 	delete[] meshes;
 	meshes = nullptr;

@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "ResourceManager.h"
 #include "D3DUtils.h"
+#include <directxtk12/DDSTextureLoader.h>
+#include <directxtk12/ResourceUploadBatch.h>
 
 /*
 ==================
@@ -136,6 +138,26 @@ void ResourceManager::CreateIndexBuffer(uint32 stride, uint32 numIndiecs, void* 
 
     *indexBuffer = ib;
     *ibView = view;
+}
+
+void ResourceManager::CreateTextureFromFile(ID3D12Resource** texResource, D3D12_RESOURCE_DESC* desc, const wchar_t* filename)
+{
+    ID3D12Resource* texture = nullptr;
+
+    ResourceUploadBatch resourceUpload(m_device);
+
+    resourceUpload.Begin();
+
+    ThrowIfFailed(CreateDDSTextureFromFile(m_device, resourceUpload, filename, &texture));
+
+    // Upload the resources to the GPU.
+    auto uploadResourcesFinished = resourceUpload.End(m_cmdQueue);
+
+    // Wait for the upload thread to terminate
+    uploadResourcesFinished.wait();
+
+    *texResource = texture;
+    *desc = texture->GetDesc();
 }
 
 void ResourceManager::CreateCommandList()

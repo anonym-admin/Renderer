@@ -5,8 +5,6 @@
 Renderer Type
 ===============
 */
-
-
 #include "../../Common/Type.h"
 #include <d3d12.h>
 #include <directxtk/SimpleMath.h>
@@ -21,11 +19,24 @@ Constant Buffer Type
 ========================
 */
 
-struct MeshConstData
+struct MESH_CONST_DATA
 {
 	Matrix world;
 	Matrix view;
 	Matrix projection;
+};
+
+/*
+============
+Texture
+============
+*/
+
+struct TEXTURE_HANDLE
+{
+	ID3D12Resource* textureResource;
+	ID3D12Resource* uploadBuffer;
+	D3D12_CPU_DESCRIPTOR_HANDLE srv;
 };
 
 /*
@@ -42,4 +53,3 @@ struct MESH
 	D3D12_INDEX_BUFFER_VIEW indexBufferView;
 	uint32 numIndices;
 };
-

@@ -19,14 +19,13 @@ public:
 
 	void CreateVertexBuffer(uint32 stride, uint32 numVertices, void* initData, D3D12_VERTEX_BUFFER_VIEW* vbView, ID3D12Resource** vertexBuffer);
 	void CreateIndexBuffer(uint32 stride, uint32 numIndiecs, void* initData, D3D12_INDEX_BUFFER_VIEW* ibView, ID3D12Resource** indexBuffer);
+	void CreateTextureFromFile(ID3D12Resource** texResource, D3D12_RESOURCE_DESC* desc, const wchar_t* filename);
 
 private:
 	void CreateCommandList();
 	void CreateFence();
-
 	void DestroyCommandList();
 	void DestroyFence();
-
 	void Fence();
 	void WaitForGpu();
 

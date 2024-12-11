@@ -22,6 +22,12 @@
     <ClCompile Include="ConstantBuffer.cpp">
       <Filter>Main</Filter>
     </ClCompile>
+    <ClCompile Include="DescriptorAllocator.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
+    <ClCompile Include="DescriptorPool.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Common\Type.h">
@@ -55,6 +61,12 @@
       <Filter>Main</Filter>
     </ClInclude>
     <ClInclude Include="ConstantBuffer.h">
+      <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="DescriptorAllocator.h">
+      <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="DescriptorPool.h">
       <Filter>Main</Filter>
     </ClInclude>
   </ItemGroup>

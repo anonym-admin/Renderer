@@ -166,6 +166,8 @@
     <ClInclude Include="..\..\Interface\IT_Renderer.h" />
     <ClInclude Include="ConstantBuffer.h" />
     <ClInclude Include="D3DUtils.h" />
+    <ClInclude Include="DescriptorPool.h" />
+    <ClInclude Include="DescriptorAllocator.h" />
     <ClInclude Include="MeshObject.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Renderer.h" />
@@ -175,6 +177,8 @@
   <ItemGroup>
     <ClCompile Include="ConstantBuffer.cpp" />
     <ClCompile Include="D3DUtils.cpp" />
+    <ClCompile Include="DescriptorPool.cpp" />
+    <ClCompile Include="DescriptorAllocator.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="MeshObject.cpp" />
     <ClCompile Include="pch.cpp">

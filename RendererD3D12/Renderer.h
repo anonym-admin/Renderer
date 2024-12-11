@@ -9,6 +9,7 @@ Renderer
 */
 
 class ResourceManager;
+class DescriptorAllocator;
 
 class Renderer : public IT_Renderer
 {
@@ -22,6 +23,8 @@ public:
 	virtual void EndRender() override;
 	virtual void Present() override;
 	virtual IT_MeshObject* CreateMeshObject() override;
+	virtual void* CreateTextureFromFile(const wchar_t* filename) override;
+	virtual void DestroyTexture(void* textureHandle) override;
 	virtual void RenderMeshObject(IT_MeshObject* obj, Matrix worldRow) override;
 	virtual void SetCameraPos(float x, float y, float z) override;
 	virtual void SetCameraPos(Vector3 camPos) override;
@@ -34,6 +37,7 @@ public:
 	/*Inline*/
 	inline ID3D12Device5* GetDevice() { return m_device; }
 	inline ResourceManager* GetReourceManager() { return m_resourceManager; }
+	inline DescriptorAllocator* GetDescriptorAllocator() { return m_descriptorAllocator; }
 	inline uint32 GetScreenWidth() { return m_screenWidth; }
 	inline uint32 GetScreenHegiht() { return m_screenHeight; }
 	inline float GetAspectRatio() { return static_cast<float>(m_screenWidth) / m_screenHeight; }
@@ -89,5 +93,6 @@ private:
 	Vector3 m_camDir = Vector3(0.0f);
 
 	ResourceManager* m_resourceManager = nullptr;
+	DescriptorAllocator* m_descriptorAllocator = nullptr;
 };
 
