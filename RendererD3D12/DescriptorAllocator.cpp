@@ -22,7 +22,7 @@ bool DescriptorAllocator::Initialize(ID3D12Device5* device, uint32 maxHeapNum)
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
 	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	heapDesc.NumDescriptors = maxHeapNum;
-	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
 	ThrowIfFailed(device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_descriptorHeap)));
 

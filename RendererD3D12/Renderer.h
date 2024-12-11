@@ -9,11 +9,17 @@ Renderer
 */
 
 class ResourceManager;
+class ConstantBufferManager;
 class DescriptorAllocator;
+class DescriptorPool;
 
 class Renderer : public IT_Renderer
 {
 public:
+	static const uint32 FRAME_COUNT = 2;
+	static const uint32 MAX_DESCRIPTOR_COUNT = 4096;
+	static const uint32 MAX_DRAW_COUNT_PER_FRAME = 4096;
+
 	Renderer();
 	~Renderer();
 
@@ -37,10 +43,14 @@ public:
 	/*Inline*/
 	inline ID3D12Device5* GetDevice() { return m_device; }
 	inline ResourceManager* GetReourceManager() { return m_resourceManager; }
+	inline ConstantBufferManager* GetConstantBufferManager() { return m_constantBufferManager; }
 	inline DescriptorAllocator* GetDescriptorAllocator() { return m_descriptorAllocator; }
+	inline DescriptorPool* GetDescriptorPool() { return m_descriptorPool; }
 	inline uint32 GetScreenWidth() { return m_screenWidth; }
 	inline uint32 GetScreenHegiht() { return m_screenHeight; }
 	inline float GetAspectRatio() { return static_cast<float>(m_screenWidth) / m_screenHeight; }
+
+	/*DLL Inner*/
 	void GetViewProjMatrix(Matrix* viewMat, Matrix* projMat);
 	void InitCamera();
 	void GpuCompleted();
@@ -61,7 +71,6 @@ private:
 	void WaitForGpu(uint64 expectedValue);
 
 private:
-	const static uint32 FRAME_COUNT = 2;
 	static uint32 sm_refCount;
 	HWND m_hwnd = nullptr;
 	HANDLE m_fenceEvent = nullptr;
@@ -93,6 +102,8 @@ private:
 	Vector3 m_camDir = Vector3(0.0f);
 
 	ResourceManager* m_resourceManager = nullptr;
+	ConstantBufferManager* m_constantBufferManager = nullptr;
 	DescriptorAllocator* m_descriptorAllocator = nullptr;
+	DescriptorPool* m_descriptorPool = nullptr;
 };
 

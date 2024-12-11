@@ -3,6 +3,10 @@
 #include "Renderer.h"
 #include "ResourceManager.h"
 #include "ConstantBuffer.h"
+#include "ConstantBufferPool.h"
+#include "ConstantBufferManager.h"
+#include "DescriptorAllocator.h"
+#include "DescriptorPool.h"
 
 /*
 ================
@@ -36,41 +40,60 @@ bool MeshObject::Initialize(Renderer* renderer)
 		result = InitPipeline();
 	}
 
-	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-	heapDesc.NumDescriptors = 1;
-	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_cbvHeap));
-
-	m_constantBuffer = new ConstantBuffer;
-	m_constantBuffer->Initialize(m_renderer->GetDevice(), sizeof(MESH_CONST_DATA), m_cbvHeap->GetCPUDescriptorHandleForHeapStart());
-
 	sm_initRefCount++;
+
 	return result;
 }
 
 void MeshObject::Draw(ID3D12GraphicsCommandList* cmdList, Matrix worldRow)
 {
-	Matrix viewMat, projMat;
-	m_renderer->GetViewProjMatrix(&viewMat, &projMat);
-	
-	m_constData.world = worldRow.Transpose();
-	m_constData.view = viewMat;
-	m_constData.projection = projMat;
+	ID3D12Device5* device = m_renderer->GetDevice();
+	ConstantBufferManager* cbManager = m_renderer->GetConstantBufferManager();
+	ConstantBufferPool* cbPool = cbManager->GetConstantBufferPool(CONSTANT_BUFFER_TYPE::MESH_CONST_TYPE);
+	DescriptorPool* descPool = m_renderer->GetDescriptorPool();
+	ID3D12DescriptorHeap* descHeap = descPool->GetDesciptorHeap();
 
-	m_constantBuffer->Upload(&m_constData);
+	ConstantBuffer* constantBuffer = cbPool->Alloc();
+	if (constantBuffer)
+	{
+		Matrix viewMat, projMat;
+		m_renderer->GetViewProjMatrix(&viewMat, &projMat);
+
+		m_constData.world = worldRow.Transpose();
+		m_constData.view = viewMat;
+		m_constData.projection = projMat;
+
+		constantBuffer->Upload(&m_constData);
+	}
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuHandle = {};
+	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuHandle = {};
+	descPool->Alloc(&cpuHandle, &gpuHandle, DESCRIPTOR_COUNT_PER_OBJ + m_numMeshes * DESCRIPTOR_COUNT_PER_MESH_DATA);
 
 	cmdList->SetGraphicsRootSignature(sm_rootSignature);
-	cmdList->SetDescriptorHeaps(1, &m_cbvHeap);
 	cmdList->SetPipelineState(sm_pipelineState);
-	cmdList->SetGraphicsRootDescriptorTable(0, m_cbvHeap->GetGPUDescriptorHandleForHeapStart());
+	cmdList->SetDescriptorHeaps(1, &descHeap);
+
+	device->CopyDescriptorsSimple(1, cpuHandle, constantBuffer->GetCbvHandle(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	cpuHandle.Offset(1, descPool->GetTypeSize());
+	for (uint32 i = 0; i < m_numMeshes; i++)
+	{
+		device->CopyDescriptorsSimple(1, cpuHandle, m_meshes[i].textureHandle->srv, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);		
+		cpuHandle.Offset(1, descPool->GetTypeSize());
+	}
+
+	cmdList->SetGraphicsRootDescriptorTable(0, gpuHandle);
+	gpuHandle.Offset(1, descPool->GetTypeSize());
 
 	for (uint32 i = 0; i < m_numMeshes; i++)
 	{
+		cmdList->SetGraphicsRootDescriptorTable(1, gpuHandle);
 		cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		cmdList->IASetVertexBuffers(0, 1, &m_meshes[i].vertexBufferView);
 		cmdList->IASetIndexBuffer(&m_meshes[i].indexBufferView);
 		cmdList->DrawIndexedInstanced(m_meshes[i].numIndices, 1, 0, 0, 0);
+
+		gpuHandle.Offset(1, descPool->GetTypeSize());
 	}
 }
 
@@ -92,20 +115,22 @@ void MeshObject::CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle)
 	for (uint32 i = 0; i < numMeshes; i++)
 	{
 		resoureManager->CreateVertexBuffer(sizeof(Vertex), meshDatas[i].numVertices, meshDatas[i].vertices, &vertexBufferView, &vertexBuffer);
-		m_meshes[i].vertexBuffer = vertexBuffer;
-		m_meshes[i].vertexBufferView = vertexBufferView;
+		meshes[i].vertexBuffer = vertexBuffer;
+		meshes[i].vertexBufferView = vertexBufferView;
 
 		resoureManager->CreateIndexBuffer(sizeof(uint32), meshDatas[i].numIndices, meshDatas[i].indices, &indexBufferView, &indexBuffer);
-		m_meshes[i].indexBuffer = indexBuffer;
-		m_meshes[i].indexBufferView = indexBufferView;
-		m_meshes[i].numIndices = meshDatas[i].numIndices;
+		meshes[i].indexBuffer = indexBuffer;
+		meshes[i].indexBufferView = indexBufferView;
+		meshes[i].numIndices = meshDatas[i].numIndices;
+
+		meshes[i].textureHandle = (TEXTURE_HANDLE*)m_renderer->CreateTextureFromFile(meshDatas[i].textureFileaname);
 	}
 	
 	m_numMeshes = numMeshes;
 
-	//MESH* dest = m_meshes;
-	//MESH* src = meshes;
-	//memcpy(dest, src, sizeof(MESH) * numMeshes);
+	MESH* dest = m_meshes;
+	MESH* src = meshes;
+	memcpy(dest, src, sizeof(MESH) * numMeshes);
 
 	delete[] meshes;
 	meshes = nullptr;
@@ -141,19 +166,6 @@ void MeshObject::CleanUp()
 {
 	m_renderer->GpuCompleted();
 
-	if (m_cbvHeap)
-	{
-		m_cbvHeap->Release();
-		m_cbvHeap = nullptr;
-	}
-
-	if (m_constantBuffer)
-	{
-		m_constantBuffer->CleanUp();
-		delete m_constantBuffer;
-		m_constantBuffer = nullptr;
-	}
-
 	if (m_meshes)
 	{
 		for (uint32 i = 0; i < m_numMeshes; i++)
@@ -167,6 +179,11 @@ void MeshObject::CleanUp()
 			{
 				m_meshes[i].indexBuffer->Release();
 				m_meshes[i].indexBuffer = nullptr;
+			}
+			if (m_meshes[i].textureHandle)
+			{
+				m_renderer->DestroyTexture(m_meshes[i].textureHandle);
+				m_meshes[i].textureHandle = nullptr;
 			}
 		}
 

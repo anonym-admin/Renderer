@@ -14,6 +14,11 @@ class ConstantBuffer;
 class MeshObject : public IT_MeshObject
 {
 public:
+	static const uint32 DESCRIPTOR_COUNT_PER_OBJ = 1;		// CB(b0)
+	static const uint32 DESCRIPTOR_COUNT_PER_MESH_DATA = 1; // SRV(t0)
+	static const uint32 MAX_MESH_DATA_COUNT_PER_OBJ = 8;
+	static const uint32 MAX_DESCRIPTOR_COUNT_FOR_DRAW = DESCRIPTOR_COUNT_PER_OBJ + (DESCRIPTOR_COUNT_PER_MESH_DATA * MAX_MESH_DATA_COUNT_PER_OBJ);
+
 	MeshObject();
 	~MeshObject();
 
@@ -41,12 +46,10 @@ private:
 	static uint32 sm_initRefCount;
 	static ID3D12RootSignature* sm_rootSignature;
 	static ID3D12PipelineState* sm_pipelineState;
-	uint32 m_refCount = 0;
+	MESH_CONST_DATA m_constData = {};
 	Renderer* m_renderer = nullptr;
 	MESH* m_meshes = nullptr;
+	uint32 m_refCount = 0;
 	uint32 m_numMeshes = 0;
-	ID3D12DescriptorHeap* m_cbvHeap = nullptr;
-	MESH_CONST_DATA m_constData = {};
-	ConstantBuffer* m_constantBuffer = nullptr;
 };
 

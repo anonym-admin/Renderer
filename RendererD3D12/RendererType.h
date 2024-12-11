@@ -26,6 +26,18 @@ struct MESH_CONST_DATA
 	Matrix projection;
 };
 
+struct SPRITE_CONST_DATA
+{
+
+};
+
+enum class CONSTANT_BUFFER_TYPE
+{
+	MESH_CONST_TYPE,
+	SPRITE_CONST_TYPE,
+	CONST_TYPE_COUNT,
+};
+
 /*
 ============
 Texture
@@ -52,4 +64,5 @@ struct MESH
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
 	D3D12_INDEX_BUFFER_VIEW indexBufferView;
 	uint32 numIndices;
+	TEXTURE_HANDLE* textureHandle;
 };

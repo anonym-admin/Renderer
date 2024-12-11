@@ -2,7 +2,9 @@
 #include "Renderer.h"
 #include "MeshObject.h"
 #include "ResourceManager.h"
+#include "ConstantBufferManager.h"
 #include "DescriptorAllocator.h"
+#include "DescriptorPool.h"
 
 /*
 =========
@@ -75,7 +77,7 @@ bool Renderer::Initialize(HWND hwnd)
 			adapter = nullptr;
 			adapterIdx++;
 		}
-		
+
 		if (complete)
 		{
 			break;
@@ -98,11 +100,16 @@ bool Renderer::Initialize(HWND hwnd)
 
 	// Create the descriptor allocator.
 	m_descriptorAllocator = new DescriptorAllocator;
-	m_descriptorAllocator->Initialize(m_device, 4096);
-
-	// Create managers.
+	m_descriptorAllocator->Initialize(m_device, MAX_DESCRIPTOR_COUNT);
+	// Create the desciptor pool.
+	m_descriptorPool = new DescriptorPool;
+	m_descriptorPool->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME * MeshObject::MAX_DESCRIPTOR_COUNT_FOR_DRAW);
+	// Create the resource manager.
 	m_resourceManager = new ResourceManager;
 	m_resourceManager->Initialize(m_device);
+	// Create the constant buffer manager.
+	m_constantBufferManager = new ConstantBufferManager;
+	m_constantBufferManager->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME);
 
 	// Create the command queue.
 	{
@@ -173,15 +180,13 @@ bool Renderer::Initialize(HWND hwnd)
 	// Create dsv descriptor heap.
 	CreateDescriptorHeapForDsv();
 	CreateDepthStencilView(screenWidth, screenHeight);
-
 	// Create the command list.
 	CreateCommandList();
 	// Create the fence.
 	CreateFence();
-
 	// Initialize the camera.
 	InitCamera();
-	
+
 	if (adapter)
 	{
 		adapter->Release();
@@ -226,7 +231,7 @@ void Renderer::EndRender()
 	m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
 	ThrowIfFailed(m_cmdList->Close());
-	ID3D12CommandList* cmdLists[] = {m_cmdList};
+	ID3D12CommandList* cmdLists[] = { m_cmdList };
 	m_cmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
 }
 
@@ -247,6 +252,9 @@ void Renderer::Present()
 	m_frameIdx = m_swapChain->GetCurrentBackBufferIndex();
 
 	WaitForGpu(m_fenceValue);
+
+	m_descriptorPool->Free();
+	m_constantBufferManager->Free();
 }
 
 IT_MeshObject* Renderer::CreateMeshObject()
@@ -374,10 +382,20 @@ void Renderer::CleanUp()
 		m_cmdQueue->Release();
 		m_cmdQueue = nullptr;
 	}
+	if (m_constantBufferManager)
+	{
+		delete m_constantBufferManager;
+		m_constantBufferManager = nullptr;
+	}
 	if (m_resourceManager)
 	{
 		delete m_resourceManager;
 		m_resourceManager = nullptr;
+	}
+	if (m_descriptorPool)
+	{
+		delete m_descriptorPool;
+		m_descriptorPool = nullptr;
 	}
 	if (m_descriptorAllocator)
 	{
@@ -457,16 +475,16 @@ void Renderer::CreateDepthStencilView(uint32 width, uint32 height)
 	depthOptimizedClearValue.DepthStencil.Stencil = 0;
 
 	CD3DX12_RESOURCE_DESC resDesc(
-		D3D12_RESOURCE_DIMENSION_TEXTURE2D, 
-		0, 
-		width, 
-		height, 
-		1, 
-		1, 
-		DXGI_FORMAT_R32_TYPELESS, 
-		1, 
-		0, 
-		D3D12_TEXTURE_LAYOUT_UNKNOWN, 
+		D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+		0,
+		width,
+		height,
+		1,
+		1,
+		DXGI_FORMAT_R32_TYPELESS,
+		1,
+		0,
+		D3D12_TEXTURE_LAYOUT_UNKNOWN,
 		D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
 	ThrowIfFailed(m_device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &depthOptimizedClearValue, IID_PPV_ARGS(&m_depthStencilView)));
@@ -574,7 +592,7 @@ void Renderer::SetCamera(Vector3 camPos, Vector3 camDir)
 	Vector3 up = Vector3(0.0f, 1.0f, 0.0);
 
 	m_viewRow = XMMatrixLookToLH(m_camPos, m_camDir, up);
-	
+
 	constexpr float fov = XMConvertToRadians(120.0f);
 	float aspect = GetAspectRatio();
 	float nearZ = 0.01f;
