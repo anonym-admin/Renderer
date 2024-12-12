@@ -18,7 +18,7 @@ public:
 	FONT_HANDLE* CreateFontObject(const wchar_t* fontName, float fontSize);
 	void CreateBitmapFromText(int32* texWidth, int32* texHeight, IDWriteTextFormat* textFormat, const wchar_t* contentsString, uint32 strLen);
 	void WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, int32* texWidth, int32* texHeight, FONT_HANDLE* fontHandle, const wchar_t* contentsString, uint32 strLen);
-
+	void DestroyFontObject(FONT_HANDLE* fontHandle);
 
 private:
 	void CleanUp();

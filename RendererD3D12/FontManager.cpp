@@ -153,6 +153,18 @@ void FontManager::WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 d
 	*texHeight = textureHeight;
 }
 
+void FontManager::DestroyFontObject(FONT_HANDLE* fontHandle)
+{
+	if (fontHandle)
+	{
+		if (fontHandle->textFormat)
+		{
+			fontHandle->textFormat->Release();
+			fontHandle->textFormat = nullptr;
+		}
+	}
+}
+
 void FontManager::CleanUp()
 {
 	if (m_dwFactory)
