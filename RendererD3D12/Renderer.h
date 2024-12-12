@@ -31,13 +31,17 @@ public:
 	virtual void Present() override;
 	virtual IT_MeshObject* CreateMeshObject() override;
 	virtual IT_SpriteObject* CreateSpriteObject() override;
+	virtual IT_SpriteObject* CreateSpriteObjectWithTexture(const wchar_t* filename, const RECT* rect) override;
 	virtual void* CreateFontObject(const wchar_t* fontName, float fontSize) override;
 	virtual void* CreateTextureFromFile(const wchar_t* filename) override;
 	virtual void* CreateDynamicTexture(uint32 texWidth, uint32 texHeight) override;
-	virtual void WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, int32* texWidth, int32* texHeight, void* fontHandle, const wchar_t* contentsString, uint32 strLen) override;
+	virtual void WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, uint32 destPitch, int32* texWidth, int32* texHeight, void* fontHandle, const wchar_t* contentsString, uint32 strLen) override;
+	virtual void UpdateTextureWidthImage(void* textureHandle, const uint8* srcImage, uint32 srcWidth, uint32 srcHeight);
 	virtual void DestroyFontObject(void* fontObj) override;
 	virtual void DestroyTexture(void* textureHandle) override;
 	virtual void RenderMeshObject(IT_MeshObject* obj, Matrix worldRow) override;
+	virtual void RenderSpriteObject(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z) override;
+	virtual void RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z, const RECT* rect, void* textureHandle) override;
 	virtual void SetCameraPos(float x, float y, float z) override;
 	virtual void SetCameraPos(Vector3 camPos) override;
 	virtual void SetCamera(Vector3 camPos, Vector3 camDir) override;

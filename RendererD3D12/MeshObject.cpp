@@ -32,8 +32,6 @@ bool MeshObject::Initialize(Renderer* renderer)
 {
 	m_renderer = renderer;
 
-	ID3D12Device5* device = m_renderer->GetDevice();
-
 	bool result = true;
 	if (sm_initRefCount == 0)
 	{
@@ -78,7 +76,7 @@ void MeshObject::Draw(ID3D12GraphicsCommandList* cmdList, Matrix worldRow)
 	cpuHandle.Offset(1, descPool->GetTypeSize());
 	for (uint32 i = 0; i < m_numMeshes; i++)
 	{
-		device->CopyDescriptorsSimple(1, cpuHandle, m_meshes[i].textureHandle->srv, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);		
+		device->CopyDescriptorsSimple(1, cpuHandle, m_meshes[i].textureHandle->srv, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		cpuHandle.Offset(1, descPool->GetTypeSize());
 	}
 
@@ -128,9 +126,12 @@ void MeshObject::CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle)
 		meshes[i].indexBufferView = indexBufferView;
 		meshes[i].numIndices = meshDatas[i].numIndices;
 
-		meshes[i].textureHandle = (TEXTURE_HANDLE*)m_renderer->CreateTextureFromFile(meshDatas[i].textureFileaname);
+		if (wcslen(meshDatas[i].textureFileaname))
+		{
+			meshes[i].textureHandle = (TEXTURE_HANDLE*)m_renderer->CreateTextureFromFile(meshDatas[i].textureFileaname);
+		}
 	}
-	
+
 	m_numMeshes = numMeshes;
 
 	MESH* dest = m_meshes;

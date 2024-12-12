@@ -7,6 +7,7 @@ Renderer Type
 */
 #include "../../Common/Type.h"
 #include <d3d12.h>
+#include <dwrite.h>
 #include <directxtk/SimpleMath.h>
 using DirectX::SimpleMath::Matrix;
 using DirectX::SimpleMath::Vector4;
@@ -28,7 +29,14 @@ struct MESH_CONST_DATA
 
 struct SPRITE_CONST_DATA
 {
-
+	Vector2 screenResolution;
+	Vector2 posOffset;
+	Vector2 scale;
+	Vector2 texSize;
+	Vector2 texOffset;
+	Vector2 texScale;
+	float depthZ;
+	float alpha;
 };
 
 enum class CONSTANT_BUFFER_TYPE
@@ -59,12 +67,12 @@ Mesh
 
 struct MESH
 {
-	ID3D12Resource* vertexBuffer;
-	ID3D12Resource* indexBuffer;
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
-	D3D12_INDEX_BUFFER_VIEW indexBufferView;
-	uint32 numIndices;
-	TEXTURE_HANDLE* textureHandle;
+	ID3D12Resource* vertexBuffer = nullptr;
+	ID3D12Resource* indexBuffer = nullptr;
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
+	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
+	uint32 numIndices = 0;
+	TEXTURE_HANDLE* textureHandle = nullptr;
 };
 
 /*

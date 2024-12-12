@@ -17,7 +17,7 @@ public:
 	bool Initialize(Renderer* renderer, ID3D12CommandQueue* cmdQueue, uint32 width, uint32 height, bool enableDebugLayer);
 	FONT_HANDLE* CreateFontObject(const wchar_t* fontName, float fontSize);
 	void CreateBitmapFromText(int32* texWidth, int32* texHeight, IDWriteTextFormat* textFormat, const wchar_t* contentsString, uint32 strLen);
-	void WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, int32* texWidth, int32* texHeight, FONT_HANDLE* fontHandle, const wchar_t* contentsString, uint32 strLen);
+	void WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, uint32 destPitch, int32* texWidth, int32* texHeight, FONT_HANDLE* fontHandle, const wchar_t* contentsString, uint32 strLen);
 	void DestroyFontObject(FONT_HANDLE* fontHandle);
 
 private:

@@ -20,5 +20,6 @@ public:
 	static void SetDebugLayerInfo(ID3D12Device* device);
 	static void PrintError(ID3DBlob* error);
 	static uint32 GetRequiredConstantDataSize(uint32 originSize);
+	static void UpdateTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, ID3D12Resource* texResource, ID3D12Resource* uploadBuufer);
 };
 

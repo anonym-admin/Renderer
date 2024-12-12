@@ -118,7 +118,7 @@ void FontManager::CreateBitmapFromText(int32* texWidth, int32* texHeight, IDWrit
 	*texHeight = height;
 }
 
-void FontManager::WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, int32* texWidth, int32* texHeight, FONT_HANDLE* fontHandle, const wchar_t* contentsString, uint32 strLen)
+void FontManager::WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, uint32 destPitch, int32* texWidth, int32* texHeight, FONT_HANDLE* fontHandle, const wchar_t* contentsString, uint32 strLen)
 {
 	int32 textureWidth = 0;
 	int32 textureHeight = 0;
@@ -143,7 +143,7 @@ void FontManager::WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 d
 	for (uint32 h = 0; h < static_cast<uint32>(textureHeight); h++)
 	{
 		memcpy(dest, src, textureWidth * 4);
-		dest += textureWidth * 4;
+		dest += destPitch;
 		src += mappedRect.pitch;
 	}
 

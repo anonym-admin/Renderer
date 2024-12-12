@@ -119,3 +119,34 @@ uint32 D3DUtils::GetRequiredConstantDataSize(uint32 originSize)
 {
 	return (originSize + 255) & ~255;
 }
+
+void D3DUtils::UpdateTexture(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, ID3D12Resource* texResource, ID3D12Resource* uploadBuufer)
+{
+	const uint32 MAX_SUBRESOURCE_NUM = 32;
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footPrint[MAX_SUBRESOURCE_NUM];
+	uint32 rows[MAX_SUBRESOURCE_NUM];
+	uint64 rowSize[MAX_SUBRESOURCE_NUM];
+	uint64 totalBytes = 0;
+
+	D3D12_RESOURCE_DESC desc = texResource->GetDesc();
+
+	device->GetCopyableFootprints(&desc, 0, desc.MipLevels, 0, footPrint, rows, rowSize, &totalBytes);
+
+	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texResource, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST));
+	for (uint32 i = 0; i < desc.MipLevels; i++)
+	{
+		D3D12_TEXTURE_COPY_LOCATION destLocation = {};
+		destLocation.PlacedFootprint = footPrint[i];
+		destLocation.pResource = texResource;
+		destLocation.SubresourceIndex = i;
+		destLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+
+		D3D12_TEXTURE_COPY_LOCATION	srcLocation = {};
+		srcLocation.PlacedFootprint = footPrint[i];
+		srcLocation.pResource = uploadBuufer;
+		srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+
+		cmdList->CopyTextureRegion(&destLocation, 0, 0, 0, &srcLocation, nullptr);
+	}
+	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texResource, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE));
+}

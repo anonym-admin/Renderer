@@ -22,7 +22,7 @@ public:
 	MeshObject();
 	~MeshObject();
 
-	/*Dll Inner*/
+	/*DLL Inner*/
 	bool Initialize(Renderer* renderer);
 	void Draw(ID3D12GraphicsCommandList* cmdList, Matrix worldRow);
 

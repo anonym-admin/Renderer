@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Renderer.h"
 #include "MeshObject.h"
+#include "SpriteObject.h"
 #include "FontManager.h"
 #include "ResourceManager.h"
 #include "ConstantBufferManager.h"
@@ -273,6 +274,13 @@ IT_MeshObject* Renderer::CreateMeshObject()
 
 IT_SpriteObject* Renderer::CreateSpriteObject()
 {
+	SpriteObject* spriteObject = new SpriteObject;
+	spriteObject->Initialize(this);
+	return spriteObject;
+}
+
+IT_SpriteObject* Renderer::CreateSpriteObjectWithTexture(const wchar_t* filename, const RECT* rect)
+{
 	return nullptr;
 }
 
@@ -360,10 +368,50 @@ void* Renderer::CreateDynamicTexture(uint32 texWidth, uint32 texHeight)
 	return textureHandle;
 }
 
-void Renderer::WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, int32* texWidth, int32* texHeight, void* fontHandle, const wchar_t* contentsString, uint32 strLen)
+void Renderer::WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, uint32 destPitch, int32* texWidth, int32* texHeight, void* fontHandle, const wchar_t* contentsString, uint32 strLen)
 {
 	FONT_HANDLE* handle = reinterpret_cast<FONT_HANDLE*>(fontHandle);
-	m_fontManager->WriteTextToBitmap(destImage, destWidth, destHeight, texWidth, texHeight, handle, contentsString, strLen);
+	m_fontManager->WriteTextToBitmap(destImage, destWidth, destHeight, destPitch, texWidth, texHeight, handle, contentsString, strLen);
+}
+
+void Renderer::UpdateTextureWidthImage(void* textureHandle, const uint8* srcImage, uint32 srcWidth, uint32 srcHeight)
+{
+	TEXTURE_HANDLE* texHandle = reinterpret_cast<TEXTURE_HANDLE*>(textureHandle);
+	ID3D12Resource* texResource = texHandle->textureResource;
+	ID3D12Resource* upBuffer = texHandle->uploadBuffer;
+	D3D12_RESOURCE_DESC texDesc = texResource->GetDesc();
+
+	if (srcWidth > texDesc.Width)
+	{
+		__debugbreak();
+	}
+	if (srcHeight > texDesc.Height)
+	{
+		__debugbreak();
+	}
+
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footPrint = {};
+	uint32 rows = 0;
+	uint64 rowSize = 0;
+	uint64 totalBytes = 0;
+
+	m_device->GetCopyableFootprints(&texDesc, 0, 1, 0, &footPrint, &rows, &rowSize, &totalBytes);
+
+	uint8* mappedPtr = nullptr;
+	CD3DX12_RANGE writeRange(0, 0);
+
+	ThrowIfFailed(upBuffer->Map(0, &writeRange, reinterpret_cast<void**>(&mappedPtr)));
+
+	const uint8* src = srcImage;
+	uint8* dest = mappedPtr;
+	for (uint32 h = 0; h < srcHeight; h++)
+	{
+		memcpy(dest, src, srcWidth * 4);
+		src += (srcWidth * 4);
+		dest += footPrint.Footprint.RowPitch;
+	}
+
+	upBuffer->Unmap(0, nullptr);
 }
 
 void Renderer::DestroyFontObject(void* fontObj)
@@ -402,8 +450,27 @@ void Renderer::DestroyTexture(void* textureHandle)
 
 void Renderer::RenderMeshObject(IT_MeshObject* obj, Matrix worldRow)
 {
-	MeshObject* meshObj = (MeshObject*)obj;
+	MeshObject* meshObj = reinterpret_cast<MeshObject*>(obj);
 	meshObj->Draw(m_cmdList, worldRow);
+}
+
+void Renderer::RenderSpriteObject(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z)
+{
+	SpriteObject* spriteObj = reinterpret_cast<SpriteObject*>(obj);
+	spriteObj->Draw(m_cmdList, static_cast<float>(posX), static_cast<float>(posY), scaleX, scaleY, z);
+}
+
+void Renderer::RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z, const RECT* rect, void* textureHandle)
+{
+	SpriteObject* spriteObj = reinterpret_cast<SpriteObject*>(obj);
+	TEXTURE_HANDLE* texHandle = reinterpret_cast<TEXTURE_HANDLE*>(textureHandle);
+
+	if (texHandle->uploadBuffer)
+	{
+		D3DUtils::UpdateTexture(m_device, m_cmdList, texHandle->textureResource, texHandle->uploadBuffer);
+	}
+
+	spriteObj->DrawWithTexture(m_cmdList, static_cast<float>(posX), static_cast<float>(posY), scaleX, scaleY, z, rect, texHandle);
 }
 
 void Renderer::GetViewProjMatrix(Matrix* viewMat, Matrix* projMat)
