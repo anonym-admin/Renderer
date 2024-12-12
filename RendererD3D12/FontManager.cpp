@@ -162,6 +162,9 @@ void FontManager::DestroyFontObject(FONT_HANDLE* fontHandle)
 			fontHandle->textFormat->Release();
 			fontHandle->textFormat = nullptr;
 		}
+
+		delete fontHandle;
+		fontHandle = nullptr;
 	}
 }
 

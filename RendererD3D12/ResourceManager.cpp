@@ -160,6 +160,32 @@ void ResourceManager::CreateTextureFromFile(ID3D12Resource** texResource, D3D12_
     *desc = texture->GetDesc();
 }
 
+void ResourceManager::CreateTextureWidthUploadBuffer(ID3D12Resource** texResource, ID3D12Resource** uploadBuffer, uint32 texWidth, uint32 texHeight, DXGI_FORMAT format)
+{
+    ID3D12Resource* textureResource = nullptr;
+    ID3D12Resource* upBuffer = nullptr;
+
+    D3D12_RESOURCE_DESC textureDesc = {};
+    textureDesc.MipLevels = 1;
+    textureDesc.Format = format;	
+    textureDesc.Width = texWidth;
+    textureDesc.Height = texHeight;
+    textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    textureDesc.DepthOrArraySize = 1;
+    textureDesc.SampleDesc.Count = 1;
+    textureDesc.SampleDesc.Quality = 0;
+    textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+
+    ThrowIfFailed(m_device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &textureDesc, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, nullptr, IID_PPV_ARGS(&textureResource)));
+    
+    uint64 uploadBufferSize = GetRequiredIntermediateSize(textureResource, 0, 1);
+
+    ThrowIfFailed(m_device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD), D3D12_HEAP_FLAG_NONE, &CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize), D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&upBuffer)));
+
+    *texResource = textureResource;
+    *uploadBuffer = upBuffer;
+}
+
 void ResourceManager::CreateCommandList()
 {
     ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_cmdAllocator)));

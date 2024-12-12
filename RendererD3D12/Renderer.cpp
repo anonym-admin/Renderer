@@ -291,22 +291,79 @@ void* Renderer::CreateTextureFromFile(const wchar_t* filename)
 	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
 
 	m_resourceManager->CreateTextureFromFile(&texResource, &resDesc, filename);
+	if (texResource)
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Format = resDesc.Format;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = resDesc.MipLevels;
 
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Format = resDesc.Format;
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MipLevels = resDesc.MipLevels;
+		m_descriptorAllocator->AllocateDescriptorHeap(&srv);
+		if (srv.ptr)
+		{
+			m_device->CreateShaderResourceView(texResource, &srvDesc, srv);
 
-	m_descriptorAllocator->AllocateDescriptorHeap(&srv);
-	m_device->CreateShaderResourceView(texResource, &srvDesc, srv);
-
-	textureHandle = new TEXTURE_HANDLE;
-	::memset(textureHandle, 0, sizeof(TEXTURE_HANDLE));
-	textureHandle->textureResource = texResource;
-	textureHandle->srv = srv;
+			textureHandle = new TEXTURE_HANDLE;
+			::memset(textureHandle, 0, sizeof(TEXTURE_HANDLE));
+			textureHandle->textureResource = texResource;
+			textureHandle->srv = srv;
+		}
+		else
+		{
+			texResource->Release();
+			texResource = nullptr;
+		}
+	}
 
 	return textureHandle;
+}
+
+void* Renderer::CreateDynamicTexture(uint32 texWidth, uint32 texHeight)
+{
+	TEXTURE_HANDLE* textureHandle = nullptr;
+	ID3D12Resource* texResource = nullptr;
+	ID3D12Resource* uploadBuffer = nullptr;
+	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
+	DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+	m_resourceManager->CreateTextureWidthUploadBuffer(&texResource, &uploadBuffer, texWidth, texHeight, format);
+	if (texResource && uploadBuffer)
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Format = format;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = 1;
+
+		m_descriptorAllocator->AllocateDescriptorHeap(&srv);
+		if (srv.ptr)
+		{
+			m_device->CreateShaderResourceView(texResource, &srvDesc, srv);
+
+			textureHandle = new TEXTURE_HANDLE;
+			::memset(textureHandle, 0, sizeof(TEXTURE_HANDLE));
+			textureHandle->textureResource = texResource;
+			textureHandle->uploadBuffer = uploadBuffer;
+			textureHandle->srv = srv;
+		}
+		else
+		{
+			texResource->Release();
+			texResource = nullptr;
+
+			uploadBuffer->Release();
+			uploadBuffer = nullptr;
+		}
+	}
+
+	return textureHandle;
+}
+
+void Renderer::WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, int32* texWidth, int32* texHeight, void* fontHandle, const wchar_t* contentsString, uint32 strLen)
+{
+	FONT_HANDLE* handle = reinterpret_cast<FONT_HANDLE*>(fontHandle);
+	m_fontManager->WriteTextToBitmap(destImage, destWidth, destHeight, texWidth, texHeight, handle, contentsString, strLen);
 }
 
 void Renderer::DestroyFontObject(void* fontObj)

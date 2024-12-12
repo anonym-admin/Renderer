@@ -33,6 +33,8 @@ public:
 	virtual IT_SpriteObject* CreateSpriteObject() override;
 	virtual void* CreateFontObject(const wchar_t* fontName, float fontSize) override;
 	virtual void* CreateTextureFromFile(const wchar_t* filename) override;
+	virtual void* CreateDynamicTexture(uint32 texWidth, uint32 texHeight) override;
+	virtual void WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, int32* texWidth, int32* texHeight, void* fontHandle, const wchar_t* contentsString, uint32 strLen) override;
 	virtual void DestroyFontObject(void* fontObj) override;
 	virtual void DestroyTexture(void* textureHandle) override;
 	virtual void RenderMeshObject(IT_MeshObject* obj, Matrix worldRow) override;
