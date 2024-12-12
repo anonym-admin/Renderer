@@ -31,7 +31,9 @@ public:
 	virtual void Present() override;
 	virtual IT_MeshObject* CreateMeshObject() override;
 	virtual IT_SpriteObject* CreateSpriteObject() override;
+	virtual void* CreateFontObject(const wchar_t* fontName, float fontSize) override;
 	virtual void* CreateTextureFromFile(const wchar_t* filename) override;
+	virtual void DestroyFontObject(void* fontObj) override;
 	virtual void DestroyTexture(void* textureHandle) override;
 	virtual void RenderMeshObject(IT_MeshObject* obj, Matrix worldRow) override;
 	virtual void SetCameraPos(float x, float y, float z) override;

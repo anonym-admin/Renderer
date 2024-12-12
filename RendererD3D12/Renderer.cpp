@@ -276,6 +276,13 @@ IT_SpriteObject* Renderer::CreateSpriteObject()
 	return nullptr;
 }
 
+void* Renderer::CreateFontObject(const wchar_t* fontName, float fontSize)
+{
+	FONT_HANDLE* fontHandle = m_fontManager->CreateFontObject(fontName, fontSize);
+
+	return fontHandle;
+}
+
 void* Renderer::CreateTextureFromFile(const wchar_t* filename)
 {
 	TEXTURE_HANDLE* textureHandle = nullptr;
@@ -300,6 +307,15 @@ void* Renderer::CreateTextureFromFile(const wchar_t* filename)
 	textureHandle->srv = srv;
 
 	return textureHandle;
+}
+
+void Renderer::DestroyFontObject(void* fontObj)
+{
+	if (fontObj)
+	{
+		FONT_HANDLE* fontHandle = reinterpret_cast<FONT_HANDLE*>(fontObj);
+		m_fontManager->DestroyFontObject(fontHandle);
+	}
 }
 
 void Renderer::DestroyTexture(void* textureHandle)
