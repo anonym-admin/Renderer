@@ -66,3 +66,16 @@ struct MESH
 	uint32 numIndices;
 	TEXTURE_HANDLE* textureHandle;
 };
+
+/*
+============
+Font
+============
+*/
+
+struct FONT_HANDLE
+{
+	wchar_t fontName[256];
+	float fontSize;
+	IDWriteTextFormat* textFormat;
+};
