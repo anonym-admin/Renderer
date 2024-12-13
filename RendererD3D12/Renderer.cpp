@@ -9,6 +9,7 @@
 #include "DescriptorAllocator.h"
 #include "DescriptorPool.h"
 #include "RenderQueue.h"
+#include "CommandContext.h"
 
 /*
 =========
@@ -119,18 +120,25 @@ bool Renderer::Initialize(HWND hwnd, bool enableDebugLayer, bool enableGBV)
 	// Create the descriptor allocator.
 	m_descriptorAllocator = new DescriptorAllocator;
 	m_descriptorAllocator->Initialize(m_device, MAX_DESCRIPTOR_COUNT);
-	// Create the desciptor pool.
-	m_descriptorPool = new DescriptorPool;
-	m_descriptorPool->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME * MeshObject::MAX_DESCRIPTOR_COUNT_FOR_DRAW);
+
+	for (uint32 i = 0; i < FRAME_PENDING_COUNT; i++)
+	{
+		// Create the desciptor pool.
+		m_descriptorPool[i] = new DescriptorPool;
+		m_descriptorPool[i]->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME * MeshObject::MAX_DESCRIPTOR_COUNT_FOR_DRAW);
+		// Create the constant buffer manager.
+		m_constantBufferManager[i] = new ConstantBufferManager;
+		m_constantBufferManager[i]->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME);
+		// Create the command context.
+		m_cmdCtx[i] = new CommandContext;
+		m_cmdCtx[i]->Initialize(m_device, 32);
+	}
 	// Create the font manager.
 	m_fontManager = new FontManager;
 	m_fontManager->Initialize(this, m_cmdQueue, 1024, 256, enableDebugLayer);
 	// Create the resource manager.
 	m_resourceManager = new ResourceManager;
 	m_resourceManager->Initialize(m_device);
-	// Create the constant buffer manager.
-	m_constantBufferManager = new ConstantBufferManager;
-	m_constantBufferManager->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME);
 	// Create the texture manager.
 	m_textureManager = new TextureManager;
 	m_textureManager->Initialize(this);
@@ -196,8 +204,6 @@ bool Renderer::Initialize(HWND hwnd, bool enableDebugLayer, bool enableGBV)
 	// Create dsv descriptor heap.
 	CreateDescriptorHeapForDsv();
 	CreateDepthStencilView(screenWidth, screenHeight);
-	// Create the command list.
-	CreateCommandList();
 	// Create the fence.
 	CreateFence();
 	// Initialize the camera.
@@ -224,8 +230,8 @@ bool Renderer::Initialize(HWND hwnd, bool enableDebugLayer, bool enableGBV)
 
 void Renderer::BeginRender()
 {
-	ThrowIfFailed(m_cmdAllocator->Reset());
-	ThrowIfFailed(m_cmdList->Reset(m_cmdAllocator, nullptr));
+	CommandContext* cmdCtx = m_cmdCtx[m_framePendingIdx];
+	ID3D12GraphicsCommandList* cmdList = cmdCtx->GetCurrentCommandList();
 
 	m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
@@ -235,8 +241,12 @@ void Renderer::BeginRender()
 	m_cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
 	const float clearColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
-	m_cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-	m_cmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+	cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	cmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+	cmdCtx->CloseAndExcute(m_cmdQueue);
+
+	Fence();
 }
 
 void Renderer::EndRender()
@@ -247,10 +257,12 @@ void Renderer::EndRender()
 	m_renderQueue->Process(m_cmdList, rtvHandle, dsvHandle, m_viewPort, m_scissorRect);
 	
 	m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	CommandContext* cmdCtx = m_cmdCtx[m_framePendingIdx];
+	ID3D12GraphicsCommandList* cmdList = cmdCtx->GetCurrentCommandList();
 
-	ThrowIfFailed(m_cmdList->Close());
-	ID3D12CommandList* cmdLists[] = { m_cmdList };
-	m_cmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
+	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+
+	cmdCtx->CloseAndExcute(m_cmdQueue);
 }
 
 void Renderer::Present()
@@ -269,11 +281,15 @@ void Renderer::Present()
 
 	m_frameIdx = m_swapChain->GetCurrentBackBufferIndex();
 
-	WaitForGpu(m_fenceValue);
+	uint32 framePendingIdx = (m_framePendingIdx + 1) % FRAME_PENDING_COUNT;
 
-	m_descriptorPool->Free();
-	m_constantBufferManager->Free();
-	m_renderQueue->Free();
+	WaitForGpu(m_fenceFramePendingValue[framePendingIdx]);
+
+	m_descriptorPool[framePendingIdx]->Free();
+	m_constantBufferManager[framePendingIdx]->Free();
+	m_cmdCtx[framePendingIdx]->Free();
+
+	m_framePendingIdx = framePendingIdx;
 }
 
 IT_MeshObject* Renderer::CreateMeshObject()
@@ -472,16 +488,21 @@ void Renderer::SetCameraPos(Vector3 camPos)
 
 void Renderer::GpuCompleted()
 {
-	WaitForGpu(m_fenceValue);
+	for (uint32 i = 0; i < FRAME_PENDING_COUNT; i++)
+	{
+		WaitForGpu(m_fenceFramePendingValue[i]);
+	}
 }
 
 void Renderer::CleanUp()
 {
 	Fence();
-	WaitForGpu(m_fenceValue);
+	for (uint32 i = 0; i < FRAME_PENDING_COUNT; i++)
+	{
+		WaitForGpu(m_fenceFramePendingValue[i]);
+	}
 
 	DestroyFence();
-	DestroyCommandList();
 	DestroyDepthStencilView();
 	DestroyDescriptorHeapForDsv();
 
@@ -516,11 +537,6 @@ void Renderer::CleanUp()
 		delete m_textureManager;
 		m_textureManager = nullptr;
 	}
-	if (m_constantBufferManager)
-	{
-		delete m_constantBufferManager;
-		m_constantBufferManager = nullptr;
-	}
 	if (m_resourceManager)
 	{
 		delete m_resourceManager;
@@ -531,10 +547,23 @@ void Renderer::CleanUp()
 		delete m_fontManager;
 		m_fontManager = nullptr;
 	}
-	if (m_descriptorPool)
+	for (uint32 i = 0; i < FRAME_PENDING_COUNT; i++)
 	{
-		delete m_descriptorPool;
-		m_descriptorPool = nullptr;
+		if (m_cmdCtx[i])
+		{
+			delete m_cmdCtx[i];
+			m_cmdCtx[i] = nullptr;
+		}
+		if (m_constantBufferManager[i])
+		{
+			delete m_constantBufferManager[i];
+			m_constantBufferManager[i] = nullptr;
+		}
+		if (m_descriptorPool[i])
+		{
+			delete m_descriptorPool[i];
+			m_descriptorPool[i] = nullptr;
+		}
 	}
 	if (m_descriptorAllocator)
 	{
@@ -633,16 +662,6 @@ void Renderer::CreateDepthStencilView(uint32 width, uint32 height)
 	m_device->CreateDepthStencilView(m_depthStencilView, &dsvDesc, dsvHandle);
 }
 
-void Renderer::CreateCommandList()
-{
-	// Create the command allocator.
-	ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_cmdAllocator)));
-	// Create the command list.
-	ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_cmdAllocator, nullptr, IID_PPV_ARGS(&m_cmdList)));
-	// Close.
-	ThrowIfFailed(m_cmdList->Close());
-}
-
 void Renderer::CreateFence()
 {
 	ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
@@ -672,20 +691,6 @@ void Renderer::DestroyDescriptorHeapForDsv()
 	}
 }
 
-void Renderer::DestroyCommandList()
-{
-	if (m_cmdList)
-	{
-		m_cmdList->Release();
-		m_cmdList = nullptr;
-	}
-	if (m_cmdAllocator)
-	{
-		m_cmdAllocator->Release();
-		m_cmdAllocator = nullptr;
-	}
-}
-
 void Renderer::DestroyDepthStencilView()
 {
 	if (m_depthStencilView)
@@ -700,6 +705,7 @@ void Renderer::DestroyFence()
 	if (m_fenceEvent)
 	{
 		::CloseHandle(m_fenceEvent);
+		m_fenceEvent = nullptr;
 	}
 	if (m_fence)
 	{
@@ -711,7 +717,8 @@ void Renderer::DestroyFence()
 void Renderer::Fence()
 {
 	uint64 curFenceValue = ++m_fenceValue;
-	m_cmdQueue->Signal(m_fence, m_fenceValue);
+	m_cmdQueue->Signal(m_fence, curFenceValue);
+	m_fenceFramePendingValue[m_framePendingIdx] = curFenceValue;
 }
 
 void Renderer::WaitForGpu(uint64 expectedValue)

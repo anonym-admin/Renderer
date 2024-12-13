@@ -43,6 +43,9 @@
     <ClCompile Include="TextureManager.cpp">
       <Filter>Main\Manager</Filter>
     </ClCompile>
+    <ClCompile Include="CommandContext.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Common\Type.h">
@@ -98,6 +101,9 @@
     </ClInclude>
     <ClInclude Include="TextureManager.h">
       <Filter>Main\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="CommandContext.h">
+      <Filter>Main</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
