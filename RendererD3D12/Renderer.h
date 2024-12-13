@@ -35,7 +35,7 @@ public:
 	virtual IT_SpriteObject* CreateSpriteObjectWithTexture(const wchar_t* filename, const RECT* rect) override;
 	virtual void* CreateFontObject(const wchar_t* fontName, float fontSize) override;
 	virtual void* CreateTextureFromFile(const wchar_t* filename) override;
-	virtual void* CreateTiledTexture(uint32 texWidth, uint32 texHeight) override;
+	virtual void* CreateTiledTexture(uint32 texWidth, uint32 texHeight, uint32 cellWidth, uint32 cellHeight) override;
 	virtual void* CreateDynamicTexture(uint32 texWidth, uint32 texHeight) override;
 	virtual void WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, uint32 destPitch, int32* texWidth, int32* texHeight, void* fontHandle, const wchar_t* contentsString, uint32 strLen) override;
 	virtual void UpdateTextureWidthImage(void* textureHandle, const uint8* srcImage, uint32 srcWidth, uint32 srcHeight);

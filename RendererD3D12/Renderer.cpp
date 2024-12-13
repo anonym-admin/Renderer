@@ -290,7 +290,11 @@ IT_SpriteObject* Renderer::CreateSpriteObjectWithTexture(const wchar_t* filename
 
 void* Renderer::CreateFontObject(const wchar_t* fontName, float fontSize)
 {
-	FONT_HANDLE* fontHandle = m_fontManager->CreateFontObject(fontName, fontSize);
+	void* fontHandle = m_fontManager->CreateFontObject(fontName, fontSize);
+	if (!fontHandle)
+	{
+		__debugbreak();
+	}
 
 	return fontHandle;
 }
@@ -306,46 +310,15 @@ void* Renderer::CreateTextureFromFile(const wchar_t* filename)
 	return handle;
 }
 
-void* Renderer::CreateTiledTexture(uint32 texWidth, uint32 texHeight)
+void* Renderer::CreateTiledTexture(uint32 texWidth, uint32 texHeight, uint32 cellWidth, uint32 cellHeight)
 {
-	uint8* image = (uint8*)malloc(texWidth * texHeight * 4);
-	ID3D12Resource* texResource = nullptr;
-	D3D12_RESOURCE_DESC texDesc = {};
-	TEXTURE_HANDLE* textureHandle = nullptr;
-	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
-
-	m_textureManager->CreateTiledTexture(image, texWidth, texHeight, 16, 16);
-
-	m_resourceManager->CreateTextureWidthImageData(&texResource, image, &texDesc, texWidth, texHeight, DXGI_FORMAT_R8G8B8A8_UNORM);
-	if (texResource)
+	void* handle = m_textureManager->CreateTiledTexture(texWidth, texHeight, cellWidth, cellHeight);
+	if (!handle)
 	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Format = texDesc.Format;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = texDesc.MipLevels;
-
-		m_descriptorAllocator->AllocateDescriptorHeap(&srv);
-		if (srv.ptr)
-		{
-			m_device->CreateShaderResourceView(texResource, &srvDesc, srv);
-
-			textureHandle = new TEXTURE_HANDLE;
-			::memset(textureHandle, 0, sizeof(TEXTURE_HANDLE));
-			textureHandle->textureResource = texResource;
-			textureHandle->srv = srv;
-		}
-		else
-		{
-			texResource->Release();
-			texResource = nullptr;
-		}
+		__debugbreak();
 	}
 
-	delete[] image;
-	image = nullptr;
-
-	return textureHandle;
+	return handle;
 }
 
 void* Renderer::CreateDynamicTexture(uint32 texWidth, uint32 texHeight)

@@ -139,6 +139,48 @@ void ResourceManager::CreateIndexBuffer(uint32 stride, uint32 numIndiecs, void* 
     *indexBuffer = ib;
     *ibView = view;
 }
+
+void ResourceManager::CreateTiledImage(uint8* image, uint32 texWidth, uint32 texHeight, uint32 cellWidth, uint32 cellHeight)
+{
+    uint32* img = (uint32*)malloc(texWidth * texHeight * 4);
+
+    uint32 tileCountX = texWidth / cellWidth;
+    uint32 tileCountY = texHeight / cellHeight;
+
+    uint32 tileIdxX = 0;
+    uint32 tileIdxY = 0;
+    uint32 color = 0;
+    for (uint32 idx = 0; idx < tileCountX * tileCountY; idx++)
+    {
+        tileIdxX = idx % tileCountX;
+        tileIdxY = idx / tileCountX;
+
+        uint32 startX = tileIdxX * cellWidth;
+        uint32 startY = tileIdxY * cellHeight;
+
+        if ((tileIdxX + tileIdxY) % 2 == 0)
+        {
+            color = 0xff000000;
+        }
+        else
+        {
+            color = 0xffffffff;
+        }
+
+        for (uint32 y = 0; y < cellHeight; y++)
+        {
+            for (uint32 x = 0; x < cellWidth; x++)
+            {
+                img[(startX + x) + texWidth * (startY + y)] = color;
+            }
+        }
+    }
+
+    memcpy(image, img, texWidth * texHeight * 4);
+
+    free(img);
+    img = nullptr;
+}
    
 void ResourceManager::CreateTextureFromFile(ID3D12Resource** texResource, D3D12_RESOURCE_DESC* desc, const wchar_t* filename)
 {

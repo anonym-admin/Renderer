@@ -28,46 +28,49 @@ bool TextureManager::Initialize(Renderer* renderer)
     return true;
 }
 
-void TextureManager::CreateTiledTexture(uint8* image, uint32 texWidth, uint32 texHeight, uint32 tileWidth, uint32 tileHeight)
+TEXTURE_HANDLE* TextureManager::CreateTiledTexture(uint32 texWidth, uint32 texHeight, uint32 cellWidth, uint32 cellHeight)
 {
-	uint32* img = (uint32*)malloc(texWidth * texHeight * 4);
+	ID3D12Device5* device = m_renderer->GetDevice();
+	ID3D12Resource* texResource = nullptr;
+	ResourceManager* resourceManager = m_renderer->GetReourceManager();
+	DescriptorAllocator* descriptorAllocator = m_renderer->GetDescriptorAllocator();
+	D3D12_RESOURCE_DESC texDesc = {};
+	TEXTURE_HANDLE* textureHandle = nullptr;
+	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
 
-	uint32 tileCountX = texWidth / tileWidth;
-	uint32 tileCountY = texHeight / tileHeight;
-
-	uint32 tileIdxX = 0;
-	uint32 tileIdxY = 0;
-	uint32 color = 0;
-	for (uint32 idx = 0; idx < tileCountX * tileCountY; idx++)
+	uint8* image = (uint8*)malloc(texWidth * texHeight * 4);
+	resourceManager->CreateTiledImage(image, texWidth, texHeight, cellWidth, cellHeight);
+	
+	resourceManager->CreateTextureWidthImageData(&texResource, image, &texDesc, texWidth, texHeight, DXGI_FORMAT_R8G8B8A8_UNORM);
+	if (texResource)
 	{
-		tileIdxX = idx % tileCountX;
-		tileIdxY = idx / tileCountX;
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Format = texDesc.Format;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = texDesc.MipLevels;
 
-		uint32 startX = tileIdxX * tileWidth;
-		uint32 startY = tileIdxY * tileHeight;
-
-		if ((tileIdxX + tileIdxY) % 2 == 0)
+		descriptorAllocator->AllocateDescriptorHeap(&srv);
+		if (srv.ptr)
 		{
-			color = 0xff000000;
+			device->CreateShaderResourceView(texResource, &srvDesc, srv);
+
+			textureHandle = new TEXTURE_HANDLE;
+			::memset(textureHandle, 0, sizeof(TEXTURE_HANDLE));
+			textureHandle->textureResource = texResource;
+			textureHandle->srv = srv;
 		}
 		else
 		{
-			color = 0xffffffff;
-		}
-
-		for (uint32 y = 0; y < tileHeight; y++)
-		{
-			for (uint32 x = 0; x < tileWidth; x++)
-			{
-				img[(startX + x) + texWidth * (startY + y)] = color;
-			}
+			texResource->Release();
+			texResource = nullptr;
 		}
 	}
 
-	memcpy(image, img, texWidth * texHeight * 4);
+	delete[] image;
+	image = nullptr;
 
-	free(img);
-	img = nullptr;
+	return textureHandle;
 }
 
 TEXTURE_HANDLE* TextureManager::CreateTextureFromFile(const wchar_t* filename)
