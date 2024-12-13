@@ -47,6 +47,19 @@ enum class CONSTANT_BUFFER_TYPE
 };
 
 /*
+===================
+Command List
+===================
+*/
+
+struct COMMAND_CONTEXT_HANDLE
+{
+	DL_LIST link;
+	ID3D12GraphicsCommandList* cmdList = nullptr;
+	ID3D12CommandAllocator* cmdAllocator = nullptr;
+};
+
+/*
 ============
 Texture
 ============
