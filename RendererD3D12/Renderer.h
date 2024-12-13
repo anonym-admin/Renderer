@@ -10,6 +10,7 @@ Renderer
 
 class FontManager;
 class ResourceManager;
+class TextureManager;
 class ConstantBufferManager;
 class DescriptorAllocator;
 class DescriptorPool;
@@ -113,6 +114,7 @@ private:
 
 	FontManager* m_fontManager = nullptr;
 	ResourceManager* m_resourceManager = nullptr;
+	TextureManager* m_textureManager = nullptr;
 	ConstantBufferManager* m_constantBufferManager = nullptr;
 	DescriptorAllocator* m_descriptorAllocator = nullptr;
 	DescriptorPool* m_descriptorPool = nullptr;

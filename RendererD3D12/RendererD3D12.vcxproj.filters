@@ -40,6 +40,7 @@
     <ClCompile Include="FontManager.cpp">
       <Filter>Main</Filter>
     </ClCompile>
+    <ClCompile Include="TextureManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Common\Type.h">
@@ -93,6 +94,7 @@
     <ClInclude Include="FontManager.h">
       <Filter>Main</Filter>
     </ClInclude>
+    <ClInclude Include="TextureManager.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Common">

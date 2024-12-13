@@ -5,6 +5,7 @@
 #include "FontManager.h"
 #include "ResourceManager.h"
 #include "ConstantBufferManager.h"
+#include "TextureManager.h"
 #include "DescriptorAllocator.h"
 #include "DescriptorPool.h"
 
@@ -129,6 +130,9 @@ bool Renderer::Initialize(HWND hwnd, bool enableDebugLayer, bool enableGBV)
 	// Create the constant buffer manager.
 	m_constantBufferManager = new ConstantBufferManager;
 	m_constantBufferManager->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME);
+	// Create the texture manager.
+	m_textureManager = new TextureManager;
+	m_textureManager->Initialize(this);
 
 	RECT rect = {};
 	::GetClientRect(hwnd, &rect);
@@ -293,79 +297,24 @@ void* Renderer::CreateFontObject(const wchar_t* fontName, float fontSize)
 
 void* Renderer::CreateTextureFromFile(const wchar_t* filename)
 {
-	TEXTURE_HANDLE* textureHandle = nullptr;
-	ID3D12Resource* texResource = nullptr;
-	D3D12_RESOURCE_DESC resDesc = {};
-	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
-
-	m_resourceManager->CreateTextureFromFile(&texResource, &resDesc, filename);
-	if (texResource)
+	void* handle = m_textureManager->CreateTextureFromFile(filename);
+	if (!handle)
 	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Format = resDesc.Format;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = resDesc.MipLevels;
-
-		m_descriptorAllocator->AllocateDescriptorHeap(&srv);
-		if (srv.ptr)
-		{
-			m_device->CreateShaderResourceView(texResource, &srvDesc, srv);
-
-			textureHandle = new TEXTURE_HANDLE;
-			::memset(textureHandle, 0, sizeof(TEXTURE_HANDLE));
-			textureHandle->textureResource = texResource;
-			textureHandle->srv = srv;
-		}
-		else
-		{
-			texResource->Release();
-			texResource = nullptr;
-		}
+		__debugbreak();
 	}
 
-	return textureHandle;
+	return handle;
 }
 
 void* Renderer::CreateDynamicTexture(uint32 texWidth, uint32 texHeight)
 {
-	TEXTURE_HANDLE* textureHandle = nullptr;
-	ID3D12Resource* texResource = nullptr;
-	ID3D12Resource* uploadBuffer = nullptr;
-	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
-	DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
-
-	m_resourceManager->CreateTextureWidthUploadBuffer(&texResource, &uploadBuffer, texWidth, texHeight, format);
-	if (texResource && uploadBuffer)
+	void* handle = m_textureManager->CreateDynamicTexture(texWidth, texHeight);
+	if (!handle)
 	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Format = format;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = 1;
-
-		m_descriptorAllocator->AllocateDescriptorHeap(&srv);
-		if (srv.ptr)
-		{
-			m_device->CreateShaderResourceView(texResource, &srvDesc, srv);
-
-			textureHandle = new TEXTURE_HANDLE;
-			::memset(textureHandle, 0, sizeof(TEXTURE_HANDLE));
-			textureHandle->textureResource = texResource;
-			textureHandle->uploadBuffer = uploadBuffer;
-			textureHandle->srv = srv;
-		}
-		else
-		{
-			texResource->Release();
-			texResource = nullptr;
-
-			uploadBuffer->Release();
-			uploadBuffer = nullptr;
-		}
+		__debugbreak();
 	}
 
-	return textureHandle;
+	return handle;
 }
 
 void Renderer::WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, uint32 destPitch, int32* texWidth, int32* texHeight, void* fontHandle, const wchar_t* contentsString, uint32 strLen)
@@ -425,27 +374,9 @@ void Renderer::DestroyFontObject(void* fontObj)
 
 void Renderer::DestroyTexture(void* textureHandle)
 {
-	TEXTURE_HANDLE* texHandle = (TEXTURE_HANDLE*)textureHandle;
+	TEXTURE_HANDLE* texHandle = reinterpret_cast<TEXTURE_HANDLE*>(textureHandle);
 
-	if (texHandle)
-	{
-		if (texHandle->textureResource)
-		{
-			texHandle->textureResource->Release();
-			texHandle->textureResource = nullptr;
-		}
-		if (texHandle->uploadBuffer)
-		{
-			texHandle->uploadBuffer->Release();
-			texHandle->uploadBuffer = nullptr;
-		}
-		if (texHandle->srv.ptr)
-		{
-			m_descriptorAllocator->FreeDecriptorHeap(texHandle->srv);
-		}
-
-		delete texHandle;
-	}
+	m_textureManager->DestroyTexture(texHandle);
 }
 
 void Renderer::RenderMeshObject(IT_MeshObject* obj, Matrix worldRow)
@@ -533,6 +464,11 @@ void Renderer::CleanUp()
 	{
 		m_cmdQueue->Release();
 		m_cmdQueue = nullptr;
+	}
+	if (m_textureManager)
+	{
+		delete m_textureManager;
+		m_textureManager = nullptr;
 	}
 	if (m_constantBufferManager)
 	{

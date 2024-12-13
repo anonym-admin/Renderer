@@ -1,4 +1,4 @@
 LIBRARY
 
 EXPORTS
-	Dll_CreateInstance 
+	Dll_CreateInstance

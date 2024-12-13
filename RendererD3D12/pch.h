@@ -6,8 +6,10 @@
 	#define new new(_NORMAL_BLOCK, __FILE__, __LINE__)
 #endif
 
+// run time lib
 #include <stdio.h>
 #include <windows.h>
+// directx
 #include <d3d12.h>
 #include <d3dx12.h>
 #include <dxgi1_3.h>
@@ -19,7 +21,9 @@
 #include <d2d1_3.h>
 #include <dwrite_3.h>
 using namespace DirectX;
-
+// my
 #include "../../Common/Type.h"
+#include "../../CommonLib/CommonLib/LinkedList.h"
+#include "../../CommonLib/CommonLib/HashTable.h"
 #include "D3DUtils.h"
 #include "RendererType.h"

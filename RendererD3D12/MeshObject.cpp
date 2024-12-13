@@ -186,11 +186,18 @@ void MeshObject::CleanUp()
 				m_meshes[i].indexBuffer->Release();
 				m_meshes[i].indexBuffer = nullptr;
 			}
-			if (m_meshes[i].textureHandle)
-			{
-				m_renderer->DestroyTexture(m_meshes[i].textureHandle);
-				m_meshes[i].textureHandle = nullptr;
-			}
+
+			/*
+			==========================================================
+			Texture manager 에서 해제를 담당한다.
+			==========================================================
+			*/
+
+			//if (m_meshes[i].textureHandle)
+			//{
+			//	m_renderer->DestroyTexture(m_meshes[i].textureHandle);
+			//	m_meshes[i].textureHandle = nullptr;
+			//}
 		}
 
 		delete[] m_meshes;
