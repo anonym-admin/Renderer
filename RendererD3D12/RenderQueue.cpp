@@ -2,6 +2,7 @@
 #include "RenderQueue.h"
 #include "MeshObject.h"
 #include "SpriteObject.h"
+#include "CommandContext.h"
 
 /*
 ================
@@ -42,6 +43,7 @@ void RenderQueue::Add(const RENDER_JOB* renderJob)
 	memcpy(dest, src, sizeof(RENDER_JOB));
 
 	m_writePos += sizeof(RENDER_JOB);
+	m_jobCount++;
 }
 
 void RenderQueue::Free()
@@ -50,65 +52,100 @@ void RenderQueue::Free()
 	m_readPos = 0;
 }
 
-uint32 RenderQueue::Process(ID3D12GraphicsCommandList* cmdList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle, D3D12_VIEWPORT viewPort, D3D12_RECT scissorRect)
+uint32 RenderQueue::Process(uint32 threadIdx, CommandContext* cmdCtx, ID3D12CommandQueue* cmdQueue, uint32 processCountPerCmdList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle, D3D12_VIEWPORT viewPort, D3D12_RECT scissorRect)
 {
 	const RENDER_JOB* job = nullptr;
+	ID3D12GraphicsCommandList* cmdList = nullptr;
+	ID3D12CommandList* cmdLists[32] = {};
+	uint32 processCount = 0;
+	uint32 procCountPerCmdList = 0;
+	uint32 cmdListCount = 0;
 
 	while (job = Dispatch())
 	{
+		cmdList = cmdCtx->GetCurrentCommandList();
 		cmdList->RSSetViewports(1, &viewPort);
 		cmdList->RSSetScissorRects(1, &scissorRect);
 		cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
 		switch (job->type)
 		{
-		case RENDER_JOB_TYPE::RENDER_MESH_OBJECT:
-		{
-			MeshObject* meshObj = reinterpret_cast<MeshObject*>(job->obj);
-			if (!meshObj)
+			case RENDER_JOB_TYPE::RENDER_MESH_OBJECT:
 			{
-				__debugbreak();
-			}
-			meshObj->Draw(cmdList, job->mesh.worldRow);
-		}
-		break;
-		case RENDER_JOB_TYPE::RENDER_SPRITE_OBJECT:
-		{
-			SpriteObject* spriteObj = reinterpret_cast<SpriteObject*>(job->obj);
-			if (!spriteObj)
-			{
-				__debugbreak();
-			}
-			SPRITE_RENDER_JOB param = {};
-			param.posX = job->sprite.posX;
-			param.posY = job->sprite.posY;
-			param.scaleX = job->sprite.scaleX;
-			param.scaleY = job->sprite.scaleY;
-			param.z = job->sprite.z;
-			param.rect = job->sprite.rect;
-			param.texHandle = job->sprite.texHandle;
-
-			TEXTURE_HANDLE* texHandle = reinterpret_cast<TEXTURE_HANDLE*>(param.texHandle);
-			if (texHandle)
-			{
-				if (texHandle->uploadBuffer)
+				MeshObject* meshObj = reinterpret_cast<MeshObject*>(job->obj);
+				if (!meshObj)
 				{
-					D3DUtils::UpdateTexture(m_device, cmdList, texHandle->textureResource, texHandle->uploadBuffer);
+					__debugbreak();
 				}
-
-				spriteObj->DrawWithTexture(cmdList, static_cast<float>(param.posX), static_cast<float>(param.posY), param.scaleX, param.scaleY, param.z, param.rect, texHandle);
+				meshObj->Draw(cmdList, threadIdx, job->mesh.worldRow);
 			}
-			else
+			break;
+			case RENDER_JOB_TYPE::RENDER_SPRITE_OBJECT:
 			{
-				spriteObj->Draw(cmdList, static_cast<float>(param.posX), static_cast<float>(param.posY), param.scaleX, param.scaleY, param.z);
+				SpriteObject* spriteObj = reinterpret_cast<SpriteObject*>(job->obj);
+				if (!spriteObj)
+				{
+					__debugbreak();
+				}
+				SPRITE_RENDER_JOB param = {};
+				param.posX = job->sprite.posX;
+				param.posY = job->sprite.posY;
+				param.scaleX = job->sprite.scaleX;
+				param.scaleY = job->sprite.scaleY;
+				param.z = job->sprite.z;
+				param.rect = job->sprite.rect;
+				param.texHandle = job->sprite.texHandle;
+
+				TEXTURE_HANDLE* texHandle = reinterpret_cast<TEXTURE_HANDLE*>(param.texHandle);
+				if (texHandle)
+				{
+					if (texHandle->uploadBuffer)
+					{
+						D3DUtils::UpdateTexture(m_device, cmdList, texHandle->textureResource, texHandle->uploadBuffer);
+					}
+
+					spriteObj->DrawWithTexture(cmdList, threadIdx, static_cast<float>(param.posX), static_cast<float>(param.posY), param.scaleX, param.scaleY, param.z, param.rect, texHandle);
+				}
+				else
+				{
+					spriteObj->Draw(cmdList, threadIdx, static_cast<float>(param.posX), static_cast<float>(param.posY), param.scaleX, param.scaleY, param.z);
+				}
 			}
-		}
-		break;
-		default:
+			break;
+			default:
+			{
+				__debugbreak();
+			}
 			break;
 		}
+
+		processCount++;
+		procCountPerCmdList++;
+
+		if (procCountPerCmdList > processCountPerCmdList)
+		{
+			cmdCtx->Close();
+			cmdLists[cmdListCount] = cmdList;
+			cmdListCount++;
+			procCountPerCmdList = 0;
+		}
 	}
-	return 0;
+
+	if (procCountPerCmdList)
+	{
+		cmdCtx->Close();
+		cmdLists[cmdListCount] = cmdList;
+		cmdListCount++;
+	}
+
+	if (cmdListCount)
+	{
+		cmdQueue->ExecuteCommandLists(cmdListCount, cmdLists);
+	}
+	
+	m_jobCount = 0;
+
+	return processCount;
 }
 
 void RenderQueue::CleanUp()

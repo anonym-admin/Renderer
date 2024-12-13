@@ -70,17 +70,17 @@ bool SpriteObject::Initialize(Renderer* renderer, const wchar_t* filename, const
 	return true;
 }
 
-void SpriteObject::Draw(ID3D12GraphicsCommandList* cmdList, float posX, float posY, float scaleX, float scaleY, float z)
+void SpriteObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, float posX, float posY, float scaleX, float scaleY, float z)
 {
 
 }
 
-void SpriteObject::DrawWithTexture(ID3D12GraphicsCommandList* cmdList, float posX, float posY, float scaleX, float scaleY, float z, const RECT* rect, TEXTURE_HANDLE* textureHandle)
+void SpriteObject::DrawWithTexture(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, float posX, float posY, float scaleX, float scaleY, float z, const RECT* rect, TEXTURE_HANDLE* textureHandle)
 {
 	ID3D12Device5* device = m_renderer->GetDevice();
-	ConstantBufferManager* cbManager = m_renderer->GetConstantBufferManager();
+	ConstantBufferManager* cbManager = m_renderer->GetConstantBufferManager(threadIdx);
 	ConstantBufferPool* cbPool = cbManager->GetConstantBufferPool(CONSTANT_BUFFER_TYPE::SPRITE_CONST_TYPE);
-	DescriptorPool* descPool = m_renderer->GetDescriptorPool();
+	DescriptorPool* descPool = m_renderer->GetDescriptorPool(threadIdx);
 	ID3D12DescriptorHeap* descHeap = descPool->GetDesciptorHeap();
 
 	uint32 texWidth = 0;

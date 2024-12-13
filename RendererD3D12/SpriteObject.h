@@ -21,8 +21,8 @@ public:
 	/*DLL Inner*/
 	bool Initialize(Renderer* renderer);
 	bool Initialize(Renderer* renderer, const wchar_t* filename, const RECT* rect);
-	void Draw(ID3D12GraphicsCommandList* cmdList, float posX, float posY, float scaleX, float scaleY, float z);
-	void DrawWithTexture(ID3D12GraphicsCommandList* cmdList, float posX, float posY, float scaleX, float scaleY, float z, const RECT* rect, TEXTURE_HANDLE* textureHandle);
+	void Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, float posX, float posY, float scaleX, float scaleY, float z);
+	void DrawWithTexture(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, float posX, float posY, float scaleX, float scaleY, float z, const RECT* rect, TEXTURE_HANDLE* textureHandle);
 
 	/*Interface*/
 	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject);

@@ -1,5 +1,7 @@
 #pragma once
 
+#define MULTI_THREAD_RENDERING 0
+
 #include "../../Interface/IT_Renderer.h"
 
 /*
@@ -22,6 +24,7 @@ class Renderer : public IT_Renderer
 public:
 	static const uint32 FRAME_COUNT = 3;
 	static const uint32 FRAME_PENDING_COUNT = 3;
+	static const uint32 MAX_THREAD_COUNT = 8;
 	static const uint32 MAX_DESCRIPTOR_COUNT = 4096;
 	static const uint32 MAX_DRAW_COUNT_PER_FRAME = 4096;
 
@@ -58,9 +61,9 @@ public:
 	/*Inline*/
 	inline ID3D12Device5* GetDevice() { return m_device; }
 	inline ResourceManager* GetReourceManager() { return m_resourceManager; }
-	inline ConstantBufferManager* GetConstantBufferManager() { return m_constantBufferManager[m_framePendingIdx]; }
+	inline ConstantBufferManager* GetConstantBufferManager(uint32 threadIdx) { return m_constantBufferManager[m_framePendingIdx][threadIdx]; }
 	inline DescriptorAllocator* GetDescriptorAllocator() { return m_descriptorAllocator; }
-	inline DescriptorPool* GetDescriptorPool() { return m_descriptorPool[m_framePendingIdx]; }
+	inline DescriptorPool* GetDescriptorPool(uint32 threadIdx) { return m_descriptorPool[m_framePendingIdx][threadIdx]; }
 	inline uint32 GetScreenWidth() { return m_screenWidth; }
 	inline uint32 GetScreenHegiht() { return m_screenHeight; }
 	inline float GetAspectRatio() { return static_cast<float>(m_screenWidth) / m_screenHeight; }
@@ -70,19 +73,20 @@ public:
 	void GetViewProjMatrix(Matrix* viewMat, Matrix* projMat);
 	void InitCamera();
 	void GpuCompleted();
+	uint32 GetTotalCmdListCount();
 
 private:
 	void CleanUp();
 	void CreateDescriptorHeapForRtv();
 	void CreateDescriptorHeapForDsv();
 	void CreateDepthStencilView(uint32 width, uint32 height);
-	// void CreateCommandList();
 	void CreateFence();
+	void CreateThreadElements();
 	void DestroyDescriptorHeapForRtv();
 	void DestroyDescriptorHeapForDsv();
-	// void DestroyCommandList();
 	void DestroyDepthStencilView();
 	void DestroyFence();
+	void DestroyThreadElements();
 	void Fence();
 	void WaitForGpu(uint64 expectedValue);
 
@@ -100,8 +104,6 @@ private:
 	ID3D12DescriptorHeap* m_dsvHeap = nullptr;
 	ID3D12Resource* m_renderTargets[FRAME_COUNT] = {};
 	ID3D12Resource* m_depthStencilView = nullptr;
-	//ID3D12CommandAllocator* m_cmdAllocator[FRAME_PENDING_COUNT] = {};
-	//ID3D12GraphicsCommandList* m_cmdList = nullptr;
 	ID3D12Fence* m_fence = nullptr;
 	uint32 m_swapChainFlag = 0;
 	uint32 m_frameIdx = 0;
@@ -121,10 +123,12 @@ private:
 	FontManager* m_fontManager = nullptr;
 	ResourceManager* m_resourceManager = nullptr;
 	TextureManager* m_textureManager = nullptr;
-	ConstantBufferManager* m_constantBufferManager[FRAME_PENDING_COUNT] = {};
+	ConstantBufferManager* m_constantBufferManager[FRAME_PENDING_COUNT][MAX_THREAD_COUNT] = {};
 	DescriptorAllocator* m_descriptorAllocator = nullptr;
-	DescriptorPool* m_descriptorPool[FRAME_PENDING_COUNT] = {};
-	CommandContext* m_cmdCtx[FRAME_PENDING_COUNT] = {};
+	DescriptorPool* m_descriptorPool[FRAME_PENDING_COUNT][MAX_THREAD_COUNT] = {};
+	CommandContext* m_cmdCtx[FRAME_PENDING_COUNT][MAX_THREAD_COUNT] = {};
+	RenderQueue* m_renderQueue[MAX_THREAD_COUNT] = {};
+	uint32 m_threadIdx = 0;
 	float m_dpi = 0.0f;
 };
 

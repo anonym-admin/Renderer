@@ -24,7 +24,7 @@ public:
 
 	/*DLL Inner*/
 	bool Initialize(Renderer* renderer);
-	void Draw(ID3D12GraphicsCommandList* cmdList, Matrix worldRow);
+	void Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matrix worldRow);
 
 	/*Interface*/
 	virtual void CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle) override;

@@ -123,15 +123,18 @@ bool Renderer::Initialize(HWND hwnd, bool enableDebugLayer, bool enableGBV)
 
 	for (uint32 i = 0; i < FRAME_PENDING_COUNT; i++)
 	{
-		// Create the desciptor pool.
-		m_descriptorPool[i] = new DescriptorPool;
-		m_descriptorPool[i]->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME * MeshObject::MAX_DESCRIPTOR_COUNT_FOR_DRAW);
-		// Create the constant buffer manager.
-		m_constantBufferManager[i] = new ConstantBufferManager;
-		m_constantBufferManager[i]->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME);
-		// Create the command context.
-		m_cmdCtx[i] = new CommandContext;
-		m_cmdCtx[i]->Initialize(m_device, 32);
+		for (uint32 j = 0; j < MAX_THREAD_COUNT; j++)
+		{
+			// Create the desciptor pool.
+			m_descriptorPool[i][j] = new DescriptorPool;
+			m_descriptorPool[i][j]->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME * MeshObject::MAX_DESCRIPTOR_COUNT_FOR_DRAW);
+			// Create the constant buffer manager.
+			m_constantBufferManager[i][j] = new ConstantBufferManager;
+			m_constantBufferManager[i][j]->Initialize(m_device, MAX_DRAW_COUNT_PER_FRAME);
+			// Create the command context.
+			m_cmdCtx[i][j] = new CommandContext;
+			m_cmdCtx[i][j]->Initialize(m_device, 32);
+		}
 	}
 	// Create the font manager.
 	m_fontManager = new FontManager;
@@ -142,9 +145,8 @@ bool Renderer::Initialize(HWND hwnd, bool enableDebugLayer, bool enableGBV)
 	// Create the texture manager.
 	m_textureManager = new TextureManager;
 	m_textureManager->Initialize(this);
-	// Create the render queue.
-	m_renderQueue = new RenderQueue;
-	m_renderQueue->Initialize(m_device, 8192);
+	// Create the thread elements.
+	CreateThreadElements();
 
 	RECT rect = {};
 	::GetClientRect(hwnd, &rect);
@@ -230,15 +232,17 @@ bool Renderer::Initialize(HWND hwnd, bool enableDebugLayer, bool enableGBV)
 
 void Renderer::BeginRender()
 {
-	CommandContext* cmdCtx = m_cmdCtx[m_framePendingIdx];
+	CommandContext* cmdCtx = m_cmdCtx[m_framePendingIdx][0];
 	ID3D12GraphicsCommandList* cmdList = cmdCtx->GetCurrentCommandList();
 
-	m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIdx, m_rtvDescriptorSize);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 
-	m_cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+	cmdList->RSSetViewports(1, &m_viewPort);
+	cmdList->RSSetScissorRects(1, &m_scissorRect);
+	cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
 	const float clearColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
 	cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
@@ -251,15 +255,21 @@ void Renderer::BeginRender()
 
 void Renderer::EndRender()
 {
+	CommandContext* cmdCtx = m_cmdCtx[m_framePendingIdx][0];
+
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIdx, m_rtvDescriptorSize);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 
-	m_renderQueue->Process(m_cmdList, rtvHandle, dsvHandle, m_viewPort, m_scissorRect);
-	
-	m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
-	CommandContext* cmdCtx = m_cmdCtx[m_framePendingIdx];
-	ID3D12GraphicsCommandList* cmdList = cmdCtx->GetCurrentCommandList();
+#if MULTI_THREAD_RENDERING
 
+#else
+	for (uint32 i = 0; i < MAX_THREAD_COUNT; i++)
+	{
+		m_renderQueue[i]->Process(i, cmdCtx, m_cmdQueue, 400, rtvHandle, dsvHandle, m_viewPort, m_scissorRect);
+	}
+#endif
+
+	ID3D12GraphicsCommandList* cmdList = cmdCtx->GetCurrentCommandList();	
 	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
 	cmdCtx->CloseAndExcute(m_cmdQueue);
@@ -285,11 +295,17 @@ void Renderer::Present()
 
 	WaitForGpu(m_fenceFramePendingValue[framePendingIdx]);
 
-	m_descriptorPool[framePendingIdx]->Free();
-	m_constantBufferManager[framePendingIdx]->Free();
-	m_cmdCtx[framePendingIdx]->Free();
+	for (uint32 threadIdx = 0; threadIdx < MAX_THREAD_COUNT; threadIdx++)
+	{
+		m_descriptorPool[framePendingIdx][threadIdx]->Free();
+		m_constantBufferManager[framePendingIdx][threadIdx]->Free();
+		m_cmdCtx[framePendingIdx][threadIdx]->Free();
+		m_renderQueue[threadIdx]->Free();
+	}
 
 	m_framePendingIdx = framePendingIdx;
+
+	printf("%d\n", GetTotalCmdListCount());
 }
 
 IT_MeshObject* Renderer::CreateMeshObject()
@@ -425,7 +441,9 @@ void Renderer::RenderMeshObject(IT_MeshObject* obj, Matrix worldRow)
 	job.type = RENDER_JOB_TYPE::RENDER_MESH_OBJECT;
 	job.obj = meshObj;
 	job.mesh.worldRow = worldRow;
-	m_renderQueue->Add(&job);
+	m_renderQueue[m_threadIdx]->Add(&job);
+
+	m_threadIdx = (m_threadIdx + 1) % MAX_THREAD_COUNT;
 }
 
 void Renderer::RenderSpriteObject(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z)
@@ -440,7 +458,9 @@ void Renderer::RenderSpriteObject(IT_SpriteObject* obj, uint32 posX, uint32 posY
 	job.sprite.scaleX = scaleX;
 	job.sprite.scaleY = scaleY;
 	job.sprite.z = z;
-	m_renderQueue->Add(&job);
+	m_renderQueue[m_threadIdx]->Add(&job);
+
+	m_threadIdx = (m_threadIdx + 1) % MAX_THREAD_COUNT;
 }
 
 void Renderer::RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z, const RECT* rect, void* textureHandle)
@@ -458,7 +478,9 @@ void Renderer::RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, 
 	job.sprite.z = z;
 	job.sprite.rect = rect;
 	job.sprite.texHandle = texHandle;
-	m_renderQueue->Add(&job);
+	m_renderQueue[m_threadIdx]->Add(&job);
+
+	m_threadIdx = (m_threadIdx + 1) % MAX_THREAD_COUNT;
 }
 
 void Renderer::GetViewProjMatrix(Matrix* viewMat, Matrix* projMat)
@@ -494,6 +516,19 @@ void Renderer::GpuCompleted()
 	}
 }
 
+uint32 Renderer::GetTotalCmdListCount()
+{
+	uint32 totalCount = 0;
+	for (uint32 i = 0; i < FRAME_PENDING_COUNT; i++)
+	{
+		for (uint32 j = 0; j < MAX_THREAD_COUNT; j++)
+		{
+			totalCount += m_cmdCtx[i][j]->GetCmdListCount();
+		}
+	}
+	return totalCount;
+}
+
 void Renderer::CleanUp()
 {
 	Fence();
@@ -527,11 +562,9 @@ void Renderer::CleanUp()
 		m_cmdQueue->Release();
 		m_cmdQueue = nullptr;
 	}
-	if (m_renderQueue)
-	{
-		delete m_renderQueue;
-		m_renderQueue = nullptr;
-	}
+	
+	DestroyThreadElements();
+
 	if (m_textureManager)
 	{
 		delete m_textureManager;
@@ -549,20 +582,23 @@ void Renderer::CleanUp()
 	}
 	for (uint32 i = 0; i < FRAME_PENDING_COUNT; i++)
 	{
-		if (m_cmdCtx[i])
+		for (uint32 j = 0; j < MAX_THREAD_COUNT; j++)
 		{
-			delete m_cmdCtx[i];
-			m_cmdCtx[i] = nullptr;
-		}
-		if (m_constantBufferManager[i])
-		{
-			delete m_constantBufferManager[i];
-			m_constantBufferManager[i] = nullptr;
-		}
-		if (m_descriptorPool[i])
-		{
-			delete m_descriptorPool[i];
-			m_descriptorPool[i] = nullptr;
+			if (m_cmdCtx[i][j])
+			{
+				delete m_cmdCtx[i][j];
+				m_cmdCtx[i][j] = nullptr;
+			}
+			if (m_constantBufferManager[i][j])
+			{
+				delete m_constantBufferManager[i][j];
+				m_constantBufferManager[i][j] = nullptr;
+			}
+			if (m_descriptorPool[i])
+			{
+				delete m_descriptorPool[i][j];
+				m_descriptorPool[i][j] = nullptr;
+			}
 		}
 	}
 	if (m_descriptorAllocator)
@@ -673,6 +709,16 @@ void Renderer::CreateFence()
 	}
 }
 
+void Renderer::CreateThreadElements()
+{
+	for (uint32 i = 0; i < MAX_THREAD_COUNT; i++)
+	{
+		// Create the render queue.
+		m_renderQueue[i] = new RenderQueue;
+		m_renderQueue[i]->Initialize(m_device, 8192);
+	}
+}
+
 void Renderer::DestroyDescriptorHeapForRtv()
 {
 	if (m_rtvHeap)
@@ -711,6 +757,18 @@ void Renderer::DestroyFence()
 	{
 		m_fence->Release();
 		m_fence = nullptr;
+	}
+}
+
+void Renderer::DestroyThreadElements()
+{
+	for (uint32 i = 0; i < MAX_THREAD_COUNT; i++)
+	{
+		if (m_renderQueue[i])
+		{
+			delete m_renderQueue[i];
+			m_renderQueue[i] = nullptr;
+		}
 	}
 }
 

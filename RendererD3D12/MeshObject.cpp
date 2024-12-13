@@ -43,12 +43,12 @@ bool MeshObject::Initialize(Renderer* renderer)
 	return result;
 }
 
-void MeshObject::Draw(ID3D12GraphicsCommandList* cmdList, Matrix worldRow)
+void MeshObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matrix worldRow)
 {
 	ID3D12Device5* device = m_renderer->GetDevice();
-	ConstantBufferManager* cbManager = m_renderer->GetConstantBufferManager();
+	ConstantBufferManager* cbManager = m_renderer->GetConstantBufferManager(threadIdx);
 	ConstantBufferPool* cbPool = cbManager->GetConstantBufferPool(CONSTANT_BUFFER_TYPE::MESH_CONST_TYPE);
-	DescriptorPool* descPool = m_renderer->GetDescriptorPool();
+	DescriptorPool* descPool = m_renderer->GetDescriptorPool(threadIdx);
 	ID3D12DescriptorHeap* descHeap = descPool->GetDesciptorHeap();
 
 	ConstantBuffer* constantBuffer = cbPool->Alloc();

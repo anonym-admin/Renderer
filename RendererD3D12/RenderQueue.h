@@ -1,11 +1,5 @@
 #pragma once
 
-/*
-================
-RenderQueue
-================
-*/
-
 enum class RENDER_JOB_TYPE
 {
 	RENDER_MESH_OBJECT,
@@ -39,6 +33,14 @@ struct RENDER_JOB
 	};
 };
 
+/*
+================
+RenderQueue
+================
+*/
+
+class CommandContext;
+
 class RenderQueue
 {
 public:
@@ -48,7 +50,7 @@ public:
 	bool Initialize(ID3D12Device5* device, uint32 maxNumJob);
 	void Add(const RENDER_JOB* renderJob);
 	void Free();
-	uint32 Process(ID3D12GraphicsCommandList* cmdList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle, D3D12_VIEWPORT viewPort, D3D12_RECT scissorRect);
+	uint32 Process(uint32 threadIdx, CommandContext* cmdCtx, ID3D12CommandQueue* cmdQueue, uint32 processCountPerCmdList, D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle, D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle, D3D12_VIEWPORT viewPort, D3D12_RECT scissorRect);
 
 private:
 	void CleanUp();
@@ -60,5 +62,6 @@ private:
 	uint32 m_maxBufferSize = 0;
 	uint32 m_readPos = 0;
 	uint32 m_writePos = 0;
+	uint32 m_jobCount = 0;
 };
 
