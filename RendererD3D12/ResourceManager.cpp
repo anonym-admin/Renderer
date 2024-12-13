@@ -139,7 +139,7 @@ void ResourceManager::CreateIndexBuffer(uint32 stride, uint32 numIndiecs, void* 
     *indexBuffer = ib;
     *ibView = view;
 }
-
+   
 void ResourceManager::CreateTextureFromFile(ID3D12Resource** texResource, D3D12_RESOURCE_DESC* desc, const wchar_t* filename)
 {
     ID3D12Resource* texture = nullptr;
@@ -158,6 +158,70 @@ void ResourceManager::CreateTextureFromFile(ID3D12Resource** texResource, D3D12_
 
     *texResource = texture;
     *desc = texture->GetDesc();
+}
+
+void ResourceManager::CreateTextureWidthImageData(ID3D12Resource** texResource, uint8* imageData, D3D12_RESOURCE_DESC* desc, uint32 texWidth, uint32 texHeight, DXGI_FORMAT format)
+{
+    ID3D12Resource* textureResource = nullptr;
+    ID3D12Resource* upBuffer = nullptr;
+
+    D3D12_RESOURCE_DESC textureDesc = {};
+    textureDesc.MipLevels = 1;
+    textureDesc.Format = format;
+    textureDesc.Width = texWidth;
+    textureDesc.Height = texHeight;
+    textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    textureDesc.DepthOrArraySize = 1;
+    textureDesc.SampleDesc.Count = 1;
+    textureDesc.SampleDesc.Quality = 0;
+    textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+
+    ThrowIfFailed(m_device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &textureDesc, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, nullptr, IID_PPV_ARGS(&textureResource)));
+    
+    uint64 uploadBufferSize = GetRequiredIntermediateSize(textureResource, 0, 1);
+
+    ThrowIfFailed(m_device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD), D3D12_HEAP_FLAG_NONE, &CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize), D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&upBuffer)));
+
+    D3D12_PLACED_SUBRESOURCE_FOOTPRINT footPrint = {};
+    uint32 rows = 0;
+    uint64 rowSize = 0;
+    uint64 totalBytes = 0;
+
+    m_device->GetCopyableFootprints(&textureDesc, 0, 1, 0, &footPrint, &rows, &rowSize, &totalBytes);
+
+    uint8* destPtr = imageData;
+    uint8* mappedPtr = nullptr;
+    CD3DX12_RANGE writeRange(0, 0);
+
+    ThrowIfFailed(upBuffer->Map(0, &writeRange, reinterpret_cast<void**>(&mappedPtr)));
+    uint8* dest = mappedPtr;
+    for (uint32 h = 0; h < texHeight; h++)
+    {
+        memcpy(dest, destPtr, texWidth * 4);
+        destPtr += (texWidth * 4);
+        dest += footPrint.Footprint.RowPitch;
+    }
+    upBuffer->Unmap(0, nullptr);
+
+    ThrowIfFailed(m_cmdAllocator->Reset());
+    ThrowIfFailed(m_cmdList->Reset(m_cmdAllocator, nullptr));
+    D3DUtils::UpdateTexture(m_device, m_cmdList, textureResource, upBuffer);
+
+    ThrowIfFailed(m_cmdList->Close());
+    ID3D12CommandList* cmdLists[] = { m_cmdList };
+    m_cmdQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
+
+    Fence();
+    WaitForGpu();
+
+    *texResource = textureResource;
+    *desc = textureDesc;
+
+    if (upBuffer)
+    {
+        upBuffer->Release();
+        upBuffer = nullptr;
+    }
 }
 
 void ResourceManager::CreateTextureWidthUploadBuffer(ID3D12Resource** texResource, ID3D12Resource** uploadBuffer, uint32 texWidth, uint32 texHeight, DXGI_FORMAT format)

@@ -27,8 +27,9 @@ public:
 	void Draw(ID3D12GraphicsCommandList* cmdList, Matrix worldRow);
 
 	/*Interface*/
-	virtual void CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle);
-	virtual void SetTransform(Matrix worldRow);
+	virtual void CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle) override;
+	virtual void SetTexture(void* textureHandle) override;
+	virtual void SetTransform(Matrix worldRow) override;
 	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject);
 	virtual ULONG STDMETHODCALLTYPE AddRef(void);
 	virtual ULONG STDMETHODCALLTYPE Release(void);

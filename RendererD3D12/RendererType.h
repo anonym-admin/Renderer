@@ -54,9 +54,9 @@ Texture
 
 struct TEXTURE_HANDLE
 {
-	ID3D12Resource* textureResource;
-	ID3D12Resource* uploadBuffer;
-	D3D12_CPU_DESCRIPTOR_HANDLE srv;
+	ID3D12Resource* textureResource = nullptr;
+	ID3D12Resource* uploadBuffer = nullptr;
+	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
 };
 
 /*
@@ -83,7 +83,7 @@ Font
 
 struct FONT_HANDLE
 {
-	wchar_t fontName[256];
-	float fontSize;
-	IDWriteTextFormat* textFormat;
+	wchar_t fontName[256] = {};
+	float fontSize = 16.0f;
+	IDWriteTextFormat* textFormat = nullptr;
 };

@@ -142,6 +142,17 @@ void MeshObject::CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle)
 	meshes = nullptr;
 }
 
+void MeshObject::SetTexture(void* textureHandle)
+{
+	// 임시로 모든 면에 텍스쳐를 붙힌다.
+	TEXTURE_HANDLE* texHandle = reinterpret_cast<TEXTURE_HANDLE*>(textureHandle);
+
+	for (uint32 i = 0; i < m_numMeshes; i++)
+	{
+		m_meshes[i].textureHandle = texHandle;
+	}
+}
+
 void MeshObject::SetTransform(Matrix worldRow)
 {
 	m_constData.world = worldRow.Transpose();

@@ -16,6 +16,7 @@ public:
 	~TextureManager();
 
 	bool Initialize(Renderer* renderer);
+	void CreateTiledTexture(uint8* image, uint32 texWidth, uint32 texHeight, uint32 tileWidth, uint32 tileHeight);
 	TEXTURE_HANDLE* CreateTextureFromFile(const wchar_t* filename);
 	TEXTURE_HANDLE* CreateDynamicTexture(uint32 texWidth, uint32 texHeight);
 	void DestroyTexture(TEXTURE_HANDLE* textureHandle);

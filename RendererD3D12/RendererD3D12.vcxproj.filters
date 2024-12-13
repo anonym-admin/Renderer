@@ -16,9 +16,6 @@
     <ClCompile Include="MeshObject.cpp">
       <Filter>Main</Filter>
     </ClCompile>
-    <ClCompile Include="ResourceManager.cpp">
-      <Filter>Main</Filter>
-    </ClCompile>
     <ClCompile Include="ConstantBuffer.cpp">
       <Filter>Main</Filter>
     </ClCompile>
@@ -31,16 +28,21 @@
     <ClCompile Include="ConstantBufferPool.cpp">
       <Filter>Main</Filter>
     </ClCompile>
-    <ClCompile Include="ConstantBufferManager.cpp">
-      <Filter>Main</Filter>
-    </ClCompile>
     <ClCompile Include="SpriteObject.cpp">
       <Filter>Main</Filter>
     </ClCompile>
-    <ClCompile Include="FontManager.cpp">
-      <Filter>Main</Filter>
+    <ClCompile Include="ConstantBufferManager.cpp">
+      <Filter>Main\Manager</Filter>
     </ClCompile>
-    <ClCompile Include="TextureManager.cpp" />
+    <ClCompile Include="ResourceManager.cpp">
+      <Filter>Main\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="FontManager.cpp">
+      <Filter>Main\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="TextureManager.cpp">
+      <Filter>Main\Manager</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Common\Type.h">
@@ -67,9 +69,6 @@
     <ClInclude Include="..\..\Common\Vertex.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="ResourceManager.h">
-      <Filter>Main</Filter>
-    </ClInclude>
     <ClInclude Include="RendererType.h">
       <Filter>Main</Filter>
     </ClInclude>
@@ -85,16 +84,21 @@
     <ClInclude Include="ConstantBufferPool.h">
       <Filter>Main</Filter>
     </ClInclude>
-    <ClInclude Include="ConstantBufferManager.h">
-      <Filter>Main</Filter>
-    </ClInclude>
     <ClInclude Include="SpriteObject.h">
       <Filter>Main</Filter>
     </ClInclude>
-    <ClInclude Include="FontManager.h">
-      <Filter>Main</Filter>
+    <ClInclude Include="ConstantBufferManager.h">
+      <Filter>Main\Manager</Filter>
     </ClInclude>
-    <ClInclude Include="TextureManager.h" />
+    <ClInclude Include="ResourceManager.h">
+      <Filter>Main\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="FontManager.h">
+      <Filter>Main\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureManager.h">
+      <Filter>Main\Manager</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Common">
@@ -114,6 +118,9 @@
     </Filter>
     <Filter Include="Shader">
       <UniqueIdentifier>{f878e23d-7357-4bcf-82e6-6bb3ed2a68c6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\Manager">
+      <UniqueIdentifier>{378a7193-9786-4e80-b0a4-557f6b490457}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

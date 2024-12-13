@@ -28,6 +28,48 @@ bool TextureManager::Initialize(Renderer* renderer)
     return true;
 }
 
+void TextureManager::CreateTiledTexture(uint8* image, uint32 texWidth, uint32 texHeight, uint32 tileWidth, uint32 tileHeight)
+{
+	uint32* img = (uint32*)malloc(texWidth * texHeight * 4);
+
+	uint32 tileCountX = texWidth / tileWidth;
+	uint32 tileCountY = texHeight / tileHeight;
+
+	uint32 tileIdxX = 0;
+	uint32 tileIdxY = 0;
+	uint32 color = 0;
+	for (uint32 idx = 0; idx < tileCountX * tileCountY; idx++)
+	{
+		tileIdxX = idx % tileCountX;
+		tileIdxY = idx / tileCountX;
+
+		uint32 startX = tileIdxX * tileWidth;
+		uint32 startY = tileIdxY * tileHeight;
+
+		if ((tileIdxX + tileIdxY) % 2 == 0)
+		{
+			color = 0xff000000;
+		}
+		else
+		{
+			color = 0xffffffff;
+		}
+
+		for (uint32 y = 0; y < tileHeight; y++)
+		{
+			for (uint32 x = 0; x < tileWidth; x++)
+			{
+				img[(startX + x) + texWidth * (startY + y)] = color;
+			}
+		}
+	}
+
+	memcpy(image, img, texWidth * texHeight * 4);
+
+	free(img);
+	img = nullptr;
+}
+
 TEXTURE_HANDLE* TextureManager::CreateTextureFromFile(const wchar_t* filename)
 {
 	ID3D12Device5* device = m_renderer->GetDevice();
