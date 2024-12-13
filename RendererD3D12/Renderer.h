@@ -14,6 +14,7 @@ class TextureManager;
 class ConstantBufferManager;
 class DescriptorAllocator;
 class DescriptorPool;
+class RenderQueue;
 
 class Renderer : public IT_Renderer
 {
@@ -119,6 +120,7 @@ private:
 	ConstantBufferManager* m_constantBufferManager = nullptr;
 	DescriptorAllocator* m_descriptorAllocator = nullptr;
 	DescriptorPool* m_descriptorPool = nullptr;
+	RenderQueue* m_renderQueue = nullptr;
 	float m_dpi = 0.0f;
 };
 

@@ -8,6 +8,7 @@
 #include "TextureManager.h"
 #include "DescriptorAllocator.h"
 #include "DescriptorPool.h"
+#include "RenderQueue.h"
 
 /*
 =========
@@ -133,6 +134,9 @@ bool Renderer::Initialize(HWND hwnd, bool enableDebugLayer, bool enableGBV)
 	// Create the texture manager.
 	m_textureManager = new TextureManager;
 	m_textureManager->Initialize(this);
+	// Create the render queue.
+	m_renderQueue = new RenderQueue;
+	m_renderQueue->Initialize(m_device, 8192);
 
 	RECT rect = {};
 	::GetClientRect(hwnd, &rect);
@@ -223,9 +227,6 @@ void Renderer::BeginRender()
 	ThrowIfFailed(m_cmdAllocator->Reset());
 	ThrowIfFailed(m_cmdList->Reset(m_cmdAllocator, nullptr));
 
-	m_cmdList->RSSetViewports(1, &m_viewPort);
-	m_cmdList->RSSetScissorRects(1, &m_scissorRect);
-
 	m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIdx, m_rtvDescriptorSize);
@@ -240,6 +241,11 @@ void Renderer::BeginRender()
 
 void Renderer::EndRender()
 {
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIdx, m_rtvDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
+
+	m_renderQueue->Process(m_cmdList, rtvHandle, dsvHandle, m_viewPort, m_scissorRect);
+	
 	m_cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
 	ThrowIfFailed(m_cmdList->Close());
@@ -267,6 +273,7 @@ void Renderer::Present()
 
 	m_descriptorPool->Free();
 	m_constantBufferManager->Free();
+	m_renderQueue->Free();
 }
 
 IT_MeshObject* Renderer::CreateMeshObject()
@@ -397,13 +404,27 @@ void Renderer::DestroyTexture(void* textureHandle)
 void Renderer::RenderMeshObject(IT_MeshObject* obj, Matrix worldRow)
 {
 	MeshObject* meshObj = reinterpret_cast<MeshObject*>(obj);
-	meshObj->Draw(m_cmdList, worldRow);
+
+	RENDER_JOB job = {};
+	job.type = RENDER_JOB_TYPE::RENDER_MESH_OBJECT;
+	job.obj = meshObj;
+	job.mesh.worldRow = worldRow;
+	m_renderQueue->Add(&job);
 }
 
 void Renderer::RenderSpriteObject(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z)
 {
 	SpriteObject* spriteObj = reinterpret_cast<SpriteObject*>(obj);
-	spriteObj->Draw(m_cmdList, static_cast<float>(posX), static_cast<float>(posY), scaleX, scaleY, z);
+
+	RENDER_JOB job = {};
+	job.type = RENDER_JOB_TYPE::RENDER_SPRITE_OBJECT;
+	job.obj = spriteObj;
+	job.sprite.posX = posX;
+	job.sprite.posY = posY;
+	job.sprite.scaleX = scaleX;
+	job.sprite.scaleY = scaleY;
+	job.sprite.z = z;
+	m_renderQueue->Add(&job);
 }
 
 void Renderer::RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z, const RECT* rect, void* textureHandle)
@@ -411,12 +432,17 @@ void Renderer::RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, 
 	SpriteObject* spriteObj = reinterpret_cast<SpriteObject*>(obj);
 	TEXTURE_HANDLE* texHandle = reinterpret_cast<TEXTURE_HANDLE*>(textureHandle);
 
-	if (texHandle->uploadBuffer)
-	{
-		D3DUtils::UpdateTexture(m_device, m_cmdList, texHandle->textureResource, texHandle->uploadBuffer);
-	}
-
-	spriteObj->DrawWithTexture(m_cmdList, static_cast<float>(posX), static_cast<float>(posY), scaleX, scaleY, z, rect, texHandle);
+	RENDER_JOB job = {};
+	job.type = RENDER_JOB_TYPE::RENDER_SPRITE_OBJECT;
+	job.obj = spriteObj;
+	job.sprite.posX = posX;
+	job.sprite.posY = posY;
+	job.sprite.scaleX = scaleX;
+	job.sprite.scaleY = scaleY;
+	job.sprite.z = z;
+	job.sprite.rect = rect;
+	job.sprite.texHandle = texHandle;
+	m_renderQueue->Add(&job);
 }
 
 void Renderer::GetViewProjMatrix(Matrix* viewMat, Matrix* projMat)
@@ -479,6 +505,11 @@ void Renderer::CleanUp()
 	{
 		m_cmdQueue->Release();
 		m_cmdQueue = nullptr;
+	}
+	if (m_renderQueue)
+	{
+		delete m_renderQueue;
+		m_renderQueue = nullptr;
 	}
 	if (m_textureManager)
 	{
