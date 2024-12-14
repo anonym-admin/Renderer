@@ -18,7 +18,7 @@ public:
 	bool Initialize(Renderer* renderer);
 	TEXTURE_HANDLE* CreateTiledTexture(uint32 texWidth, uint32 texHeight, uint32 cellWidth, uint32 cellHeight);
 	TEXTURE_HANDLE* CreateTextureFromFile(const wchar_t* filename);
-	TEXTURE_HANDLE* CreateDynamicTexture(uint32 texWidth, uint32 texHeight);
+	TEXTURE_HANDLE* CreateDynamicTexture(uint32 texWidth, uint32 texHeight, const char* name = nullptr);
 	void DestroyTexture(TEXTURE_HANDLE* textureHandle);
 	
 private:

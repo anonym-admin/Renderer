@@ -97,6 +97,10 @@ uint32 RenderQueue::Process(uint32 threadIdx, CommandContext* cmdCtx, ID3D12Comm
 				param.texHandle = job->sprite.texHandle;
 
 				TEXTURE_HANDLE* texHandle = reinterpret_cast<TEXTURE_HANDLE*>(param.texHandle);
+
+				// printf("%d %d %s\n", param.posX, param.posY, texHandle->name);
+
+
 				if (texHandle)
 				{
 					if (texHandle->uploadBuffer)

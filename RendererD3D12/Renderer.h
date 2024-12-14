@@ -42,8 +42,8 @@ public:
 	virtual void* CreateFontObject(const wchar_t* fontName, float fontSize) override;
 	virtual void* CreateTextureFromFile(const wchar_t* filename) override;
 	virtual void* CreateTiledTexture(uint32 texWidth, uint32 texHeight, uint32 cellWidth, uint32 cellHeight) override;
-	virtual void* CreateDynamicTexture(uint32 texWidth, uint32 texHeight) override;
-	virtual void WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, uint32 destPitch, int32* texWidth, int32* texHeight, void* fontHandle, const wchar_t* contentsString, uint32 strLen) override;
+	virtual void* CreateDynamicTexture(uint32 texWidth, uint32 texHeight, const char* name = nullptr) override;
+	virtual void WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, uint32 destPitch, int32* texWidth, int32* texHeight, void* fontHandle, const wchar_t* contentsString, uint32 strLen, FONT_COLOR_TYPE type = FONT_COLOR_TYPE::WHITE) override;
 	virtual void UpdateTextureWidthImage(void* textureHandle, const uint8* srcImage, uint32 srcWidth, uint32 srcHeight);
 	virtual void DestroyFontObject(void* fontObj) override;
 	virtual void DestroyTexture(void* textureHandle) override;
@@ -54,6 +54,7 @@ public:
 	virtual void SetCameraPos(Vector3 camPos) override;
 	virtual void SetCamera(Vector3 camPos, Vector3 camDir) override;
 	virtual void SetCamera(float x, float y, float z, float dirX, float dirY, float dirZ) override;
+	virtual uint32 GetCmdListCount() override;
 	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject) override;
 	virtual ULONG STDMETHODCALLTYPE AddRef(void) override;
 	virtual ULONG STDMETHODCALLTYPE Release(void) override;
@@ -73,7 +74,6 @@ public:
 	void GetViewProjMatrix(Matrix* viewMat, Matrix* projMat);
 	void InitCamera();
 	void GpuCompleted();
-	uint32 GetTotalCmdListCount();
 
 private:
 	void CleanUp();

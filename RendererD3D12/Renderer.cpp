@@ -326,8 +326,6 @@ void Renderer::Present()
 	}
 
 	m_framePendingIdx = framePendingIdx;
-
-	printf("%d\n", GetTotalCmdListCount());
 }
 
 IT_MeshObject* Renderer::CreateMeshObject()
@@ -382,9 +380,9 @@ void* Renderer::CreateTiledTexture(uint32 texWidth, uint32 texHeight, uint32 cel
 	return handle;
 }
 
-void* Renderer::CreateDynamicTexture(uint32 texWidth, uint32 texHeight)
+void* Renderer::CreateDynamicTexture(uint32 texWidth, uint32 texHeight, const char* name)
 {
-	void* handle = m_textureManager->CreateDynamicTexture(texWidth, texHeight);
+	void* handle = m_textureManager->CreateDynamicTexture(texWidth, texHeight, name);
 	if (!handle)
 	{
 		__debugbreak();
@@ -393,10 +391,10 @@ void* Renderer::CreateDynamicTexture(uint32 texWidth, uint32 texHeight)
 	return handle;
 }
 
-void Renderer::WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, uint32 destPitch, int32* texWidth, int32* texHeight, void* fontHandle, const wchar_t* contentsString, uint32 strLen)
+void Renderer::WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, uint32 destPitch, int32* texWidth, int32* texHeight, void* fontHandle, const wchar_t* contentsString, uint32 strLen, FONT_COLOR_TYPE type)
 {
 	FONT_HANDLE* handle = reinterpret_cast<FONT_HANDLE*>(fontHandle);
-	m_fontManager->WriteTextToBitmap(destImage, destWidth, destHeight, destPitch, texWidth, texHeight, handle, contentsString, strLen);
+	m_fontManager->WriteTextToBitmap(destImage, destWidth, destHeight, destPitch, texWidth, texHeight, handle, contentsString, strLen, type);
 }
 
 void Renderer::UpdateTextureWidthImage(void* textureHandle, const uint8* srcImage, uint32 srcWidth, uint32 srcHeight)
@@ -537,19 +535,6 @@ void Renderer::GpuCompleted()
 	{
 		WaitForGpu(m_fenceFramePendingValue[i]);
 	}
-}
-
-uint32 Renderer::GetTotalCmdListCount()
-{
-	uint32 totalCount = 0;
-	for (uint32 i = 0; i < FRAME_PENDING_COUNT; i++)
-	{
-		for (uint32 j = 0; j < m_renderThreadCount; j++)
-		{
-			totalCount += m_cmdCtx[i][j]->GetCmdListCount();
-		}
-	}
-	return totalCount;
 }
 
 void Renderer::CleanUp()
@@ -865,6 +850,19 @@ void Renderer::SetCamera(float x, float y, float z, float dirX, float dirY, floa
 	m_camPos = Vector3(x, y, z);
 	m_camDir = Vector3(dirX, dirY, dirZ);
 	SetCamera(m_camPos, m_camDir);
+}
+
+uint32 Renderer::GetCmdListCount()
+{
+	uint32 totalCount = 0;
+	for (uint32 i = 0; i < FRAME_PENDING_COUNT; i++)
+	{
+		for (uint32 j = 0; j < m_renderThreadCount; j++)
+		{
+			totalCount += m_cmdCtx[i][j]->GetCmdListCount();
+		}
+	}
+	return totalCount;
 }
 
 /*

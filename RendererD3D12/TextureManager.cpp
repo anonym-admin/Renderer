@@ -122,7 +122,7 @@ TEXTURE_HANDLE* TextureManager::CreateTextureFromFile(const wchar_t* filename)
 	return textureHandle;
 }
 
-TEXTURE_HANDLE* TextureManager::CreateDynamicTexture(uint32 texWidth, uint32 texHeight)
+TEXTURE_HANDLE* TextureManager::CreateDynamicTexture(uint32 texWidth, uint32 texHeight, const char* name)
 {
 	ID3D12Device5* device = m_renderer->GetDevice();
 	ResourceManager* resourceManager = m_renderer->GetReourceManager();
@@ -152,6 +152,7 @@ TEXTURE_HANDLE* TextureManager::CreateDynamicTexture(uint32 texWidth, uint32 tex
 			textureHandle->textureResource = texResource;
 			textureHandle->uploadBuffer = uploadBuffer;
 			textureHandle->srv = srv;
+			strcpy_s(textureHandle->name, name);
 		}
 		else
 		{

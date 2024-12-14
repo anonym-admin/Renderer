@@ -70,6 +70,7 @@ struct TEXTURE_HANDLE
 	ID3D12Resource* textureResource = nullptr;
 	ID3D12Resource* uploadBuffer = nullptr;
 	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
+	char name[32] = {};
 };
 
 /*

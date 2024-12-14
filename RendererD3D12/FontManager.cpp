@@ -4,6 +4,12 @@
 
 using namespace D2D1;
 
+const uint32 FONT_COLOR_TABLES[] =
+{
+	ColorF::White,
+	ColorF::Green,
+};
+
 /*
 ===============
 FontManager
@@ -66,10 +72,11 @@ FONT_HANDLE* FontManager::CreateFontObject(const wchar_t* fontName, float fontSi
 	return fontHandle;
 }
 
-void FontManager::CreateBitmapFromText(int32* texWidth, int32* texHeight, IDWriteTextFormat* textFormat, const wchar_t* contentsString, uint32 strLen)
+void FontManager::CreateBitmapFromText(int32* texWidth, int32* texHeight, IDWriteTextFormat* textFormat, const wchar_t* contentsString, uint32 strLen, FONT_COLOR_TYPE type)
 {
 	ID2D1DeviceContext* d2dDeviceContext = m_d2dDeviceContext;
 	IDWriteFactory5* dwFactory = m_dwFactory;
+	ID2D1SolidColorBrush* brush = m_brush[static_cast<uint32>(type)];
 	D2D1_SIZE_F maxSize = d2dDeviceContext->GetSize();
 	maxSize.width = static_cast<float>(m_bitmapWidth);
 	maxSize.height = static_cast<float>(m_bitmapHeight);
@@ -94,7 +101,7 @@ void FontManager::CreateBitmapFromText(int32* texWidth, int32* texHeight, IDWrit
 		d2dDeviceContext->Clear(ColorF(ColorF::Black));
 		d2dDeviceContext->SetTransform(Matrix3x2F::Identity());
 
-		d2dDeviceContext->DrawTextLayout(Point2F(0.0f, 0.0f), textLayout, m_whiteBrush);
+		d2dDeviceContext->DrawTextLayout(Point2F(0.0f, 0.0f), textLayout, brush);
 
 		// We ignore D2DERR_RECREATE_TARGET here. This error indicates that the device
 		// is lost. It will be handled during the next call to Present.
@@ -118,12 +125,12 @@ void FontManager::CreateBitmapFromText(int32* texWidth, int32* texHeight, IDWrit
 	*texHeight = height;
 }
 
-void FontManager::WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, uint32 destPitch, int32* texWidth, int32* texHeight, FONT_HANDLE* fontHandle, const wchar_t* contentsString, uint32 strLen)
+void FontManager::WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, uint32 destPitch, int32* texWidth, int32* texHeight, FONT_HANDLE* fontHandle, const wchar_t* contentsString, uint32 strLen, FONT_COLOR_TYPE type)
 {
 	int32 textureWidth = 0;
 	int32 textureHeight = 0;
 
-	CreateBitmapFromText(&textureWidth, &textureHeight, fontHandle->textFormat, contentsString, strLen);
+	CreateBitmapFromText(&textureWidth, &textureHeight, fontHandle->textFormat, contentsString, strLen, type);
 
 	if (textureWidth > static_cast<int32>(destWidth))
 	{
@@ -175,10 +182,13 @@ void FontManager::CleanUp()
 		m_dwFactory->Release();
 		m_dwFactory = nullptr;
 	}
-	if (m_whiteBrush)
+	for (uint32 i = 0; i < static_cast<uint32>(FONT_COLOR_TYPE::END); i++)
 	{
-		m_whiteBrush->Release();
-		m_whiteBrush = nullptr;
+		if (m_brush[i])
+		{
+			m_brush[i]->Release();
+			m_brush[i] = nullptr;
+		}
 	}
 	if (m_d2dTargetBitmapRead)
 	{
@@ -278,7 +288,12 @@ bool FontManager::CreateDWrite(ID3D12Device* device, uint32 width, uint32 height
 	bitmapProperties.bitmapOptions = D2D1_BITMAP_OPTIONS_CANNOT_DRAW | D2D1_BITMAP_OPTIONS_CPU_READ;
 	ThrowIfFailed(m_d2dDeviceContext->CreateBitmap(size, nullptr, 0, &bitmapProperties, &m_d2dTargetBitmapRead));
 
-	ThrowIfFailed(m_d2dDeviceContext->CreateSolidColorBrush(ColorF(ColorF::White), &m_whiteBrush));
+	for (uint32 i = 0; i < static_cast<uint32>(FONT_COLOR_TYPE::END); i++)
+	{
+		ID2D1SolidColorBrush* brush = nullptr;
+		ThrowIfFailed(m_d2dDeviceContext->CreateSolidColorBrush(ColorF(FONT_COLOR_TABLES[i]), &brush));
+		m_brush[i] = brush;
+	}
 
 	ThrowIfFailed(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory5), (IUnknown**)&m_dwFactory));
 
