@@ -46,6 +46,15 @@
     <ClCompile Include="CommandContext.cpp">
       <Filter>Main</Filter>
     </ClCompile>
+    <ClCompile Include="RenderQueue.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
+    <ClCompile Include="GenericUtils.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderThread.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Common\Type.h">
@@ -103,6 +112,15 @@
       <Filter>Main\Manager</Filter>
     </ClInclude>
     <ClInclude Include="CommandContext.h">
+      <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderQueue.h">
+      <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="GenericUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderThread.h">
       <Filter>Main</Filter>
     </ClInclude>
   </ItemGroup>

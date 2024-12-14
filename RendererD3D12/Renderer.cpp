@@ -117,13 +117,26 @@ bool Renderer::Initialize(HWND hwnd, bool enableDebugLayer, bool enableGBV)
 		m_device->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(&m_cmdQueue));
 	}
 
+	// Get physical core.
+	uint32 physicalCoreCount = 0;
+	uint32 logicalCoreCount = 0;
+	GenericUtils::GetPhysicalCoreCount(&physicalCoreCount, &logicalCoreCount);
+	m_renderThreadCount = physicalCoreCount;
+	if (m_renderThreadCount > MAX_THREAD_COUNT)
+	{
+		m_renderThreadCount = MAX_THREAD_COUNT;
+	}
+	// Create the thread elements.
+#if MULTI_THREAD_RENDERING
+	CreateThreadPool(m_renderThreadCount);
+#endif
 	// Create the descriptor allocator.
 	m_descriptorAllocator = new DescriptorAllocator;
 	m_descriptorAllocator->Initialize(m_device, MAX_DESCRIPTOR_COUNT);
 
 	for (uint32 i = 0; i < FRAME_PENDING_COUNT; i++)
 	{
-		for (uint32 j = 0; j < MAX_THREAD_COUNT; j++)
+		for (uint32 j = 0; j < m_renderThreadCount; j++)
 		{
 			// Create the desciptor pool.
 			m_descriptorPool[i][j] = new DescriptorPool;
@@ -145,8 +158,12 @@ bool Renderer::Initialize(HWND hwnd, bool enableDebugLayer, bool enableGBV)
 	// Create the texture manager.
 	m_textureManager = new TextureManager;
 	m_textureManager->Initialize(this);
-	// Create the thread elements.
-	CreateThreadElements();
+	// Create the render queue.
+	for (uint32 i = 0; i < m_renderThreadCount; i++)
+	{
+		m_renderQueue[i] = new RenderQueue;
+		m_renderQueue[i]->Initialize(m_device, 8192);
+	}
 
 	RECT rect = {};
 	::GetClientRect(hwnd, &rect);
@@ -240,9 +257,9 @@ void Renderer::BeginRender()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIdx, m_rtvDescriptorSize);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 
-	cmdList->RSSetViewports(1, &m_viewPort);
-	cmdList->RSSetScissorRects(1, &m_scissorRect);
-	cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+	//cmdList->RSSetViewports(1, &m_viewPort);
+	//cmdList->RSSetScissorRects(1, &m_scissorRect);
+	//cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
 	const float clearColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
 	cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
@@ -261,15 +278,20 @@ void Renderer::EndRender()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
 
 #if MULTI_THREAD_RENDERING
-
+	m_activeThreadCount = m_renderThreadCount;
+	for (uint32 i = 0; i < m_renderThreadCount; i++)
+	{
+		SetEvent(m_threadDesc[i].threadEvent[static_cast<uint32>(RENDER_THREAD_EVENT_TYPE::RENDER_THREAD_PROCESS)]);
+	}
+	WaitForSingleObject(m_completeThread, INFINITE);
 #else
-	for (uint32 i = 0; i < MAX_THREAD_COUNT; i++)
+	for (uint32 i = 0; i < m_renderThreadCount; i++)
 	{
 		m_renderQueue[i]->Process(i, cmdCtx, m_cmdQueue, 400, rtvHandle, dsvHandle, m_viewPort, m_scissorRect);
 	}
 #endif
 
-	ID3D12GraphicsCommandList* cmdList = cmdCtx->GetCurrentCommandList();	
+	ID3D12GraphicsCommandList* cmdList = cmdCtx->GetCurrentCommandList();
 	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
 	cmdCtx->CloseAndExcute(m_cmdQueue);
@@ -295,7 +317,7 @@ void Renderer::Present()
 
 	WaitForGpu(m_fenceFramePendingValue[framePendingIdx]);
 
-	for (uint32 threadIdx = 0; threadIdx < MAX_THREAD_COUNT; threadIdx++)
+	for (uint32 threadIdx = 0; threadIdx < m_renderThreadCount; threadIdx++)
 	{
 		m_descriptorPool[framePendingIdx][threadIdx]->Free();
 		m_constantBufferManager[framePendingIdx][threadIdx]->Free();
@@ -443,7 +465,7 @@ void Renderer::RenderMeshObject(IT_MeshObject* obj, Matrix worldRow)
 	job.mesh.worldRow = worldRow;
 	m_renderQueue[m_threadIdx]->Add(&job);
 
-	m_threadIdx = (m_threadIdx + 1) % MAX_THREAD_COUNT;
+	m_threadIdx = (m_threadIdx + 1) % m_renderThreadCount;
 }
 
 void Renderer::RenderSpriteObject(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z)
@@ -460,10 +482,10 @@ void Renderer::RenderSpriteObject(IT_SpriteObject* obj, uint32 posX, uint32 posY
 	job.sprite.z = z;
 	m_renderQueue[m_threadIdx]->Add(&job);
 
-	m_threadIdx = (m_threadIdx + 1) % MAX_THREAD_COUNT;
+	m_threadIdx = (m_threadIdx + 1) % m_renderThreadCount;
 }
 
-void Renderer::RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z, const RECT* rect, void* textureHandle)
+void Renderer::RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z, const RECT* rect, void* textureHandle, const char* name)
 {
 	SpriteObject* spriteObj = reinterpret_cast<SpriteObject*>(obj);
 	TEXTURE_HANDLE* texHandle = reinterpret_cast<TEXTURE_HANDLE*>(textureHandle);
@@ -478,9 +500,10 @@ void Renderer::RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, 
 	job.sprite.z = z;
 	job.sprite.rect = rect;
 	job.sprite.texHandle = texHandle;
+	strcpy_s(job.sprite.name, name);
 	m_renderQueue[m_threadIdx]->Add(&job);
 
-	m_threadIdx = (m_threadIdx + 1) % MAX_THREAD_COUNT;
+	m_threadIdx = (m_threadIdx + 1) % m_renderThreadCount;
 }
 
 void Renderer::GetViewProjMatrix(Matrix* viewMat, Matrix* projMat)
@@ -521,7 +544,7 @@ uint32 Renderer::GetTotalCmdListCount()
 	uint32 totalCount = 0;
 	for (uint32 i = 0; i < FRAME_PENDING_COUNT; i++)
 	{
-		for (uint32 j = 0; j < MAX_THREAD_COUNT; j++)
+		for (uint32 j = 0; j < m_renderThreadCount; j++)
 		{
 			totalCount += m_cmdCtx[i][j]->GetCmdListCount();
 		}
@@ -562,9 +585,14 @@ void Renderer::CleanUp()
 		m_cmdQueue->Release();
 		m_cmdQueue = nullptr;
 	}
-	
-	DestroyThreadElements();
-
+	for (uint32 i = 0; i < m_renderThreadCount; i++)
+	{
+		if (m_renderQueue[i])
+		{
+			delete m_renderQueue[i];
+			m_renderQueue[i] = nullptr;
+		}
+	}
 	if (m_textureManager)
 	{
 		delete m_textureManager;
@@ -582,7 +610,7 @@ void Renderer::CleanUp()
 	}
 	for (uint32 i = 0; i < FRAME_PENDING_COUNT; i++)
 	{
-		for (uint32 j = 0; j < MAX_THREAD_COUNT; j++)
+		for (uint32 j = 0; j < m_renderThreadCount; j++)
 		{
 			if (m_cmdCtx[i][j])
 			{
@@ -601,6 +629,9 @@ void Renderer::CleanUp()
 			}
 		}
 	}
+
+	DestroyThreadPool();
+
 	if (m_descriptorAllocator)
 	{
 		delete m_descriptorAllocator;
@@ -709,14 +740,23 @@ void Renderer::CreateFence()
 	}
 }
 
-void Renderer::CreateThreadElements()
+void Renderer::CreateThreadPool(uint32 threadCount)
 {
-	for (uint32 i = 0; i < MAX_THREAD_COUNT; i++)
+	m_threadDesc = new RENDER_THREAD_DESC[threadCount];
+
+	for (uint32 i = 0; i < threadCount; i++)
 	{
-		// Create the render queue.
-		m_renderQueue[i] = new RenderQueue;
-		m_renderQueue[i]->Initialize(m_device, 8192);
+		for (uint32 j = 0; j < static_cast<uint32>(RENDER_THREAD_EVENT_TYPE::RENDER_THREAD_TYPE_COUNT); j++)
+		{
+			m_threadDesc[i].threadEvent[j] = CreateEvent(nullptr, false, false, nullptr);
+		}
+		uint32 threadId = 0;
+		m_threadDesc[i].renderBody = this;
+		m_threadDesc[i].threadIdx = i;
+		m_threadDesc[i].threadHandle = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, RenderThread::ProcessByRenderThread, m_threadDesc + i, 0, &threadId));
 	}
+
+	m_completeThread = CreateEvent(nullptr, false, false, nullptr);
 }
 
 void Renderer::DestroyDescriptorHeapForRtv()
@@ -760,15 +800,30 @@ void Renderer::DestroyFence()
 	}
 }
 
-void Renderer::DestroyThreadElements()
+void Renderer::DestroyThreadPool()
 {
-	for (uint32 i = 0; i < MAX_THREAD_COUNT; i++)
+	if (m_threadDesc)
 	{
-		if (m_renderQueue[i])
+		for (uint32 i = 0; i < m_renderThreadCount; i++)
 		{
-			delete m_renderQueue[i];
-			m_renderQueue[i] = nullptr;
+			SetEvent(m_threadDesc[i].threadEvent[static_cast<uint32>(RENDER_THREAD_EVENT_TYPE::RENDER_THREAD_EXIT)]);
+			WaitForSingleObject(m_threadDesc[i].threadHandle, INFINITE);
+
+			for (uint32 j = 0; j < static_cast<uint32>(RENDER_THREAD_EVENT_TYPE::RENDER_THREAD_TYPE_COUNT); j++)
+			{
+				if (m_threadDesc[i].threadEvent[j])
+				{
+					CloseHandle(m_threadDesc[i].threadEvent[j]);
+				}
+			}
+			if (m_threadDesc[i].threadHandle)
+			{
+				CloseHandle(m_threadDesc[i].threadHandle);
+			}
 		}
+
+		delete[] m_threadDesc;
+		m_threadDesc = nullptr;
 	}
 }
 
@@ -810,4 +865,26 @@ void Renderer::SetCamera(float x, float y, float z, float dirX, float dirY, floa
 	m_camPos = Vector3(x, y, z);
 	m_camDir = Vector3(dirX, dirY, dirZ);
 	SetCamera(m_camPos, m_camDir);
+}
+
+/*
+===================
+Process
+===================
+*/
+
+void Renderer::Process(uint32 threadIdx)
+{
+	CommandContext* cmdCtx = m_cmdCtx[m_framePendingIdx][threadIdx];
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIdx, m_rtvDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
+
+	m_renderQueue[threadIdx]->Process(threadIdx, cmdCtx, m_cmdQueue, 400, rtvHandle, dsvHandle, m_viewPort, m_scissorRect);
+
+	uint64 curThreadCount = _InterlockedDecrement(&m_activeThreadCount);
+	if (curThreadCount == 0)
+	{
+		SetEvent(m_completeThread);
+	}
 }

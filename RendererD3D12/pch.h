@@ -9,6 +9,7 @@
 // run time lib
 #include <stdio.h>
 #include <windows.h>
+#include <process.h>
 // directx
 #include <d3d12.h>
 #include <d3dx12.h>
@@ -25,5 +26,7 @@ using namespace DirectX;
 #include "../../Common/Type.h"
 #include "../../CommonLib/CommonLib/LinkedList.h"
 #include "../../CommonLib/CommonLib/HashTable.h"
+#include "../../GenericUtils.h"
 #include "D3DUtils.h"
 #include "RendererType.h"
+#include "RenderThread.h"

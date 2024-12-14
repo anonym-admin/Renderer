@@ -1,6 +1,6 @@
 #pragma once
 
-#define MULTI_THREAD_RENDERING 0
+#define MULTI_THREAD_RENDERING 1
 
 #include "../../Interface/IT_Renderer.h"
 
@@ -23,7 +23,7 @@ class Renderer : public IT_Renderer
 {
 public:
 	static const uint32 FRAME_COUNT = 3;
-	static const uint32 FRAME_PENDING_COUNT = 3;
+	static const uint32 FRAME_PENDING_COUNT = 2;
 	static const uint32 MAX_THREAD_COUNT = 8;
 	static const uint32 MAX_DESCRIPTOR_COUNT = 4096;
 	static const uint32 MAX_DRAW_COUNT_PER_FRAME = 4096;
@@ -49,7 +49,7 @@ public:
 	virtual void DestroyTexture(void* textureHandle) override;
 	virtual void RenderMeshObject(IT_MeshObject* obj, Matrix worldRow) override;
 	virtual void RenderSpriteObject(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z) override;
-	virtual void RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z, const RECT* rect, void* textureHandle) override;
+	virtual void RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z, const RECT* rect, void* textureHandle, const char* name) override;
 	virtual void SetCameraPos(float x, float y, float z) override;
 	virtual void SetCameraPos(Vector3 camPos) override;
 	virtual void SetCamera(Vector3 camPos, Vector3 camDir) override;
@@ -81,14 +81,17 @@ private:
 	void CreateDescriptorHeapForDsv();
 	void CreateDepthStencilView(uint32 width, uint32 height);
 	void CreateFence();
-	void CreateThreadElements();
+	void CreateThreadPool(uint32 threadCount);
 	void DestroyDescriptorHeapForRtv();
 	void DestroyDescriptorHeapForDsv();
 	void DestroyDepthStencilView();
 	void DestroyFence();
-	void DestroyThreadElements();
+	void DestroyThreadPool();
 	void Fence();
 	void WaitForGpu(uint64 expectedValue);
+
+	friend class RenderThread;
+	void Process(uint32 threadIdx);
 
 private:
 	uint32 m_refCount = 1;
@@ -115,6 +118,7 @@ private:
 	uint64 m_fenceValue = 0;
 	uint64 m_fenceFramePendingValue[FRAME_PENDING_COUNT] = {};
 	uint32 m_syncInterval = 0; // Vsync on:1/off:0
+	uint32 m_renderThreadCount = 0;
 	Matrix m_viewRow = Matrix();
 	Matrix m_projRow = Matrix();
 	Vector3 m_camPos = Vector3(0.0f);
@@ -128,7 +132,10 @@ private:
 	DescriptorPool* m_descriptorPool[FRAME_PENDING_COUNT][MAX_THREAD_COUNT] = {};
 	CommandContext* m_cmdCtx[FRAME_PENDING_COUNT][MAX_THREAD_COUNT] = {};
 	RenderQueue* m_renderQueue[MAX_THREAD_COUNT] = {};
+	RENDER_THREAD_DESC* m_threadDesc = nullptr;
+	HANDLE m_completeThread = nullptr;
 	uint32 m_threadIdx = 0;
 	float m_dpi = 0.0f;
+	volatile uint64 m_activeThreadCount = 0;
 };
 

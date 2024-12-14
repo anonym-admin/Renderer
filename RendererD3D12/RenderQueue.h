@@ -20,6 +20,7 @@ struct SPRITE_RENDER_JOB
 	float z;
 	const RECT* rect;
 	void* texHandle;
+	char name[32];
 };
 
 struct RENDER_JOB
