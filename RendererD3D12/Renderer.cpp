@@ -550,6 +550,20 @@ void Renderer::SetCameraPos(Vector3 camPos)
 	SetCamera(m_camPos, m_camDir);
 }
 
+void Renderer::SetCameraRot(const float yaw, const float pitch, const float roll)
+{
+	Matrix rotY = Matrix::CreateRotationY(yaw);
+	Matrix rotX = Matrix::CreateRotationX(pitch);
+	m_camDir = Vector3::Transform(Vector3(0.0f, 0.0f, 1.0f), rotY);
+	SetCamera(m_camPos, m_camDir);
+}
+
+void Renderer::SetCameraRot(const Vector3 dir)
+{
+	m_camDir = dir;
+	SetCamera(m_camPos, m_camDir);
+}
+
 void Renderer::GpuCompleted()
 {
 	for (uint32 i = 0; i < FRAME_PENDING_COUNT; i++)
@@ -858,7 +872,7 @@ void Renderer::SetCamera(Vector3 camPos, Vector3 camDir)
 
 	m_viewRow = XMMatrixLookToLH(m_camPos, m_camDir, up);
 
-	constexpr float fov = XMConvertToRadians(120.0f);
+	constexpr float fov = XMConvertToRadians(70.0f);
 	float aspect = GetAspectRatio();
 	float nearZ = 0.01f;
 	float farZ = 1000.0f;
@@ -870,6 +884,28 @@ void Renderer::SetCamera(float x, float y, float z, float dirX, float dirY, floa
 {
 	m_camPos = Vector3(x, y, z);
 	m_camDir = Vector3(dirX, dirY, dirZ);
+	SetCamera(m_camPos, m_camDir);
+}
+
+void Renderer::MoveRightCamera(float dt)
+{
+	Vector3 up = Vector3(0.0f, 1.0f, 0.0f);
+	Vector3 right = up.Cross(m_camDir);
+	right.Normalize();
+	m_camPos = m_camPos + dt * right;
+	SetCamera(m_camPos, m_camDir);
+}
+
+void Renderer::MoveFrontCamera(float dt)
+{
+	m_camPos = m_camPos + dt * m_camDir;
+	SetCamera(m_camPos, m_camDir);
+}
+
+void Renderer::MoveUpCamera(float dt)
+{
+	Vector3 up = Vector3(0.0f, 1.0f, 0.0f);
+	m_camPos = m_camPos + dt * up;
 	SetCamera(m_camPos, m_camDir);
 }
 

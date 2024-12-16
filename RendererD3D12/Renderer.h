@@ -54,8 +54,13 @@ public:
 	virtual void RenderLineObject(IT_LineObject* obj, Matrix worldRow) override;
 	virtual void SetCameraPos(float x, float y, float z) override;
 	virtual void SetCameraPos(Vector3 camPos) override;
+	virtual void SetCameraRot(const float yaw, const float pitch, const float roll) override;
+	virtual void SetCameraRot(const Vector3 dir) override;
 	virtual void SetCamera(Vector3 camPos, Vector3 camDir) override;
 	virtual void SetCamera(float x, float y, float z, float dirX, float dirY, float dirZ) override;
+	virtual void MoveRightCamera(float dt) override;
+	virtual void MoveFrontCamera(float dt) override;
+	virtual void MoveUpCamera(float dt) override;
 	virtual bool MousePicking(DirectX::BoundingBox boundingBox, float ndcX, float ndcY, Vector3* hitPos, float* hitDist, float* ratio) override;
 	virtual void MousePickingAfterMoveObject(float ndcX, float ndcY, Vector3* movePos, float ratio) override;
 	virtual uint32 GetCmdListCount() override;
