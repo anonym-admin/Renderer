@@ -4,6 +4,7 @@ enum class RENDER_JOB_TYPE
 {
 	RENDER_MESH_OBJECT,
 	RENDER_SPRITE_OBJECT,
+	RENDER_LINE_OBJECT,
 };
 
 struct MESH_RENDER_JOB
@@ -23,6 +24,11 @@ struct SPRITE_RENDER_JOB
 	char name[32];
 };
 
+struct LINE_RENDER_JOB
+{
+	Matrix worldRow;
+};
+
 struct RENDER_JOB
 {
 	RENDER_JOB_TYPE type = {};
@@ -31,6 +37,7 @@ struct RENDER_JOB
 	{
 		MESH_RENDER_JOB mesh;
 		SPRITE_RENDER_JOB sprite;
+		LINE_RENDER_JOB line;
 	};
 };
 

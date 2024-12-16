@@ -2,6 +2,7 @@
 #include "RenderQueue.h"
 #include "MeshObject.h"
 #include "SpriteObject.h"
+#include "LineObject.h"
 #include "CommandContext.h"
 
 /*
@@ -114,6 +115,16 @@ uint32 RenderQueue::Process(uint32 threadIdx, CommandContext* cmdCtx, ID3D12Comm
 				{
 					spriteObj->Draw(cmdList, threadIdx, static_cast<float>(param.posX), static_cast<float>(param.posY), param.scaleX, param.scaleY, param.z);
 				}
+			}
+			break;
+			case RENDER_JOB_TYPE::RENDER_LINE_OBJECT:
+			{
+				LineObject* lineObj = reinterpret_cast<LineObject*>(job->obj);
+				if (!lineObj)
+				{
+					__debugbreak();
+				}
+				lineObj->Draw(cmdList, threadIdx, job->line.worldRow);
 			}
 			break;
 			default:

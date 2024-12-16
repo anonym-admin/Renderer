@@ -8,6 +8,7 @@ const uint32 FONT_COLOR_TABLES[] =
 {
 	ColorF::White,
 	ColorF::Green,
+	0x00FF7F,
 };
 
 /*

@@ -176,7 +176,7 @@
     <ClInclude Include="DescriptorPool.h" />
     <ClInclude Include="DescriptorAllocator.h" />
     <ClInclude Include="FontManager.h" />
-    <ClInclude Include="GenericUtils.h" />
+    <ClInclude Include="LineObject.h" />
     <ClInclude Include="MeshObject.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Renderer.h" />
@@ -197,7 +197,7 @@
     <ClCompile Include="DescriptorAllocator.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="FontManager.cpp" />
-    <ClCompile Include="GenericUtils.cpp" />
+    <ClCompile Include="LineObject.cpp" />
     <ClCompile Include="MeshObject.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -223,6 +223,11 @@
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\..\Shader\SpriteShader.hlsl">
+      <FileType>Document</FileType>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\..\Shader\LineShader.hlsl">
       <FileType>Document</FileType>
     </CustomBuild>
   </ItemGroup>

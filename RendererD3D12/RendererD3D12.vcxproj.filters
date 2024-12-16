@@ -49,10 +49,10 @@
     <ClCompile Include="RenderQueue.cpp">
       <Filter>Main</Filter>
     </ClCompile>
-    <ClCompile Include="GenericUtils.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
     <ClCompile Include="RenderThread.cpp">
+      <Filter>Main</Filter>
+    </ClCompile>
+    <ClCompile Include="LineObject.cpp">
       <Filter>Main</Filter>
     </ClCompile>
   </ItemGroup>
@@ -117,10 +117,10 @@
     <ClInclude Include="RenderQueue.h">
       <Filter>Main</Filter>
     </ClInclude>
-    <ClInclude Include="GenericUtils.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
     <ClInclude Include="RenderThread.h">
+      <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="LineObject.h">
       <Filter>Main</Filter>
     </ClInclude>
   </ItemGroup>
@@ -158,6 +158,9 @@
       <Filter>Shader</Filter>
     </CustomBuild>
     <CustomBuild Include="..\..\Shader\SpriteShader.hlsl">
+      <Filter>Shader</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\..\Shader\LineShader.hlsl">
       <Filter>Shader</Filter>
     </CustomBuild>
   </ItemGroup>

@@ -1,36 +1,33 @@
 #include "pch.h"
-#include "SpriteObject.h"
+#include "LineObject.h"
 #include "Renderer.h"
 #include "ResourceManager.h"
-#include "ConstantBufferManager.h"
-#include "ConstantBufferPool.h"
-#include "ConstantBuffer.h"
 #include "DescriptorPool.h"
+#include "ConstantBufferPool.h"
+#include "ConstantBufferManager.h"
+#include "ConstantBuffer.h"
 
 /*
-=================
-SpriteObject
-=================
+================
+LineObject
+================
 */
 
-uint32 SpriteObject::sm_initRefCount;
-ID3D12RootSignature* SpriteObject::sm_rootSignature;
-ID3D12PipelineState* SpriteObject::sm_pipelineState;
-D3D12_VERTEX_BUFFER_VIEW SpriteObject::sm_vbView;
-D3D12_INDEX_BUFFER_VIEW SpriteObject::sm_ibView;
-ID3D12Resource* SpriteObject::sm_vertexBuffer;
-ID3D12Resource* SpriteObject::sm_indexBuffer;
+uint32 LineObject::sm_initRefCount;
+ID3D12RootSignature* LineObject::sm_rootSignature;
+ID3D12PipelineState* LineObject::sm_pipelineState;
 
-SpriteObject::SpriteObject()
+LineObject::LineObject()
 {
+	m_refCount++;
 }
 
-SpriteObject::~SpriteObject()
+LineObject::~LineObject()
 {
 	CleanUp();
 }
 
-bool SpriteObject::Initialize(Renderer* renderer)
+bool LineObject::Initialize(Renderer* renderer)
 {
 	m_renderer = renderer;
 
@@ -45,120 +42,72 @@ bool SpriteObject::Initialize(Renderer* renderer)
 	return result;
 }
 
-bool SpriteObject::Initialize(Renderer* renderer, const wchar_t* filename, const RECT* rect)
-{
-	m_renderer = renderer;
-
-	bool result = true;
-	if (sm_initRefCount == 0)
-	{
-		result = InitPipeline();
-	}
-	
-	uint32 texWidth = 1;
-	uint32 texHeight = 1;
-	m_textureHandle = reinterpret_cast<TEXTURE_HANDLE*>(m_renderer->CreateTextureFromFile(filename));
-	if (m_textureHandle)
-	{
-		D3D12_RESOURCE_DESC desc = m_textureHandle->textureResource->GetDesc();
-		texWidth = static_cast<uint32>(desc.Width);
-		texHeight = static_cast<uint32>(desc.Height);
-	}
-
-	sm_initRefCount++;
-
-	return true;
-}
-
-void SpriteObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, float posX, float posY, float scaleX, float scaleY, float z)
-{
-
-}
-
-void SpriteObject::DrawWithTexture(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, float posX, float posY, float scaleX, float scaleY, float z, const RECT* rect, TEXTURE_HANDLE* textureHandle)
+void LineObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matrix worldRow)
 {
 	ID3D12Device5* device = m_renderer->GetDevice();
 	ConstantBufferManager* cbManager = m_renderer->GetConstantBufferManager(threadIdx);
-	ConstantBufferPool* cbPool = cbManager->GetConstantBufferPool(CONSTANT_BUFFER_TYPE::SPRITE_CONST_TYPE);
+	ConstantBufferPool* cbPool = cbManager->GetConstantBufferPool(CONSTANT_BUFFER_TYPE::MESH_CONST_TYPE);
 	DescriptorPool* descPool = m_renderer->GetDescriptorPool(threadIdx);
 	ID3D12DescriptorHeap* descHeap = descPool->GetDesciptorHeap();
-
-	uint32 texWidth = 0;
-	uint32 texHeight = 0;
-	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
-	if (textureHandle)
-	{
-		D3D12_RESOURCE_DESC desc = textureHandle->textureResource->GetDesc();
-		texWidth = static_cast<uint32>(desc.Width);
-		texHeight = static_cast<uint32>(desc.Height);
-		srv = textureHandle->srv;
-	}
-
-	RECT rt = {};
-	if (!rect)
-	{
-		rt.left = 0;
-		rt.top = 0;
-		rt.right = texWidth;
-		rt.bottom = texHeight;
-		rect = &rt;
-	}
 
 	ConstantBuffer* constantBuffer = cbPool->Alloc();
 	if (constantBuffer)
 	{
-		m_constData.screenResolution.x = static_cast<float>(m_renderer->GetScreenWidth());
-		m_constData.screenResolution.y = static_cast<float>(m_renderer->GetScreenHegiht());
-		m_constData.posOffset.x = posX;
-		m_constData.posOffset.y = posY;
-		m_constData.scale.x = scaleX;
-		m_constData.scale.y = scaleY;
-		m_constData.texSize.x = static_cast<float>(texWidth);
-		m_constData.texSize.y = static_cast<float>(texHeight);
-		m_constData.texOffset.x = static_cast<float>(rect->left);
-		m_constData.texOffset.y = static_cast<float>(rect->top);
-		m_constData.texScale.x = static_cast<float>(rect->right - rect->left);
-		m_constData.texScale.y = static_cast<float>(rect->bottom - rect->top);
-		m_constData.depthZ = z;
-		m_constData.alpha = 1.0f;
+		Matrix viewMat, projMat;
+		m_renderer->GetViewProjMatrix(&viewMat, &projMat);
+
+		m_constData.world = worldRow.Transpose();
+		m_constData.view = viewMat;
+		m_constData.projection = projMat;
 
 		constantBuffer->Upload(&m_constData);
 	}
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuHandle = {};
 	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuHandle = {};
-	descPool->Alloc(&cpuHandle, &gpuHandle, MAX_DESCRIPTOR_COUNT_FOR_DRAW);
-	
+	descPool->Alloc(&cpuHandle, &gpuHandle, DESCRIPTOR_COUNT_PER_OBJ);
+
 	cmdList->SetGraphicsRootSignature(sm_rootSignature);
 	cmdList->SetPipelineState(sm_pipelineState);
 	cmdList->SetDescriptorHeaps(1, &descHeap);
 
 	device->CopyDescriptorsSimple(1, cpuHandle, constantBuffer->GetCbvHandle(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	cpuHandle.Offset(1, descPool->GetTypeSize());
-	if (srv.ptr)
-	{
-		device->CopyDescriptorsSimple(1, cpuHandle, srv, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	}
 
 	cmdList->SetGraphicsRootDescriptorTable(0, gpuHandle);
-	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	cmdList->IASetVertexBuffers(0, 1, &sm_vbView);
-	cmdList->IASetIndexBuffer(&sm_ibView);
-	cmdList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+	cmdList->IASetVertexBuffers(0, 1, &m_vbView);
+	cmdList->DrawInstanced(m_numVertices, 1, 0, 0);
 }
 
-HRESULT __stdcall SpriteObject::QueryInterface(REFIID riid, void** ppvObject)
+void LineObject::CreateLineBuffers(LineData* lineData)
+{
+	ResourceManager* resourceManager = m_renderer->GetReourceManager();
+	D3D12_VERTEX_BUFFER_VIEW vbView = {};
+	D3D12_INDEX_BUFFER_VIEW ibView = {};
+	ID3D12Resource* vertexBuffer = nullptr;
+	ID3D12Resource* indexBuffer = nullptr;
+
+	m_numVertices = lineData->numVertices;
+	LineVertex* vertices = lineData->vertices;
+
+	resourceManager->CreateVertexBuffer(sizeof(LineVertex), m_numVertices, vertices, &vbView, &vertexBuffer);
+
+	m_vbView = vbView;
+	m_vertexBuffer = vertexBuffer;
+}
+
+HRESULT __stdcall LineObject::QueryInterface(REFIID riid, void** ppvObject)
 {
 	return E_NOTIMPL;
 }
 
-ULONG __stdcall SpriteObject::AddRef(void)
+ULONG __stdcall LineObject::AddRef(void)
 {
 	uint32 refCount = ++m_refCount;
 	return refCount;
 }
 
-ULONG __stdcall SpriteObject::Release(void)
+ULONG __stdcall LineObject::Release(void)
 {
 	uint32 refCount = --m_refCount;
 	if (refCount == 0)
@@ -168,7 +117,7 @@ ULONG __stdcall SpriteObject::Release(void)
 	return refCount;
 }
 
-void SpriteObject::CleanUp()
+void LineObject::CleanUp()
 {
 	m_renderer->GpuCompleted();
 
@@ -179,33 +128,36 @@ void SpriteObject::CleanUp()
 	}
 }
 
-bool SpriteObject::InitPipeline()
+bool LineObject::InitPipeline()
 {
 	CreateRootSignature();
 	CreatePipelineState();
-	CreateBuffers();
 	return true;
 }
 
-void SpriteObject::CleanUpPipeline()
+void LineObject::CleanUpPipeline()
 {
-	DestroyBuffers();
+	if (m_vertexBuffer)
+	{
+		m_vertexBuffer->Release();
+		m_vertexBuffer = nullptr;
+	}
+
 	DestroyPipelineState();
 	DestroyRootSignature();
 }
 
-void SpriteObject::CreateRootSignature()
+void LineObject::CreateRootSignature()
 {
 	ID3D12Device5* device = m_renderer->GetDevice();
 
 	ID3DBlob* signature = nullptr;
 	ID3DBlob* error = nullptr;
 
-	CD3DX12_DESCRIPTOR_RANGE rangesPerObj[2] = {};
+	CD3DX12_DESCRIPTOR_RANGE rangesPerObj[1] = {};
 	rangesPerObj[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0); // b0 
-	rangesPerObj[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0); // t0
 
-	CD3DX12_ROOT_PARAMETER rootParameters[1] = {};
+	CD3DX12_ROOT_PARAMETER rootParameters[2] = {};
 	rootParameters[0].InitAsDescriptorTable(_countof(rangesPerObj), rangesPerObj, D3D12_SHADER_VISIBILITY_ALL);
 
 	D3D12_STATIC_SAMPLER_DESC samplterDesc = {};
@@ -251,7 +203,7 @@ void SpriteObject::CreateRootSignature()
 	}
 }
 
-void SpriteObject::CreatePipelineState()
+void LineObject::CreatePipelineState()
 {
 	ID3D12Device5* device = m_renderer->GetDevice();
 
@@ -265,7 +217,7 @@ void SpriteObject::CreatePipelineState()
 	compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #endif
 
-	if (FAILED(D3DCompileFromFile(L"../../Shader/SpriteShader.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, &error)))
+	if (FAILED(D3DCompileFromFile(L"../../Shader/LineShader.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, &error)))
 	{
 		if (error != nullptr)
 		{
@@ -274,7 +226,7 @@ void SpriteObject::CreatePipelineState()
 		__debugbreak();
 	}
 
-	if (FAILED(D3DCompileFromFile(L"../../Shader/SpriteShader.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, &error)))
+	if (FAILED(D3DCompileFromFile(L"../../Shader/LineShader.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, &error)))
 	{
 		if (error != nullptr)
 		{
@@ -287,8 +239,7 @@ void SpriteObject::CreatePipelineState()
 	D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,	0, 24,	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 	};
 
 	// Create the graphics pipeline state object (PSO).
@@ -305,7 +256,7 @@ void SpriteObject::CreatePipelineState()
 	//psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
 	psoDesc.SampleMask = UINT_MAX;
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 	psoDesc.NumRenderTargets = 1;
 	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
@@ -329,38 +280,8 @@ void SpriteObject::CreatePipelineState()
 	}
 }
 
-void SpriteObject::CreateBuffers()
-{
-	ResourceManager* resourceManager = m_renderer->GetReourceManager();
-	D3D12_VERTEX_BUFFER_VIEW vbView = {};
-	D3D12_INDEX_BUFFER_VIEW ibView = {};
-	ID3D12Resource* vertexBuffer = nullptr;
-	ID3D12Resource* indexBuffer = nullptr;
 
-	const uint32 numVertices = 4;
-	const uint32 numIndices = 6;
-	SpriteVertex vertices[numVertices] =
-	{
-		{{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
-		{{0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-		{{1.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-		{{1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
-	};
-	uint32 indices[numIndices] =
-	{
-		0, 2, 1, 0, 3, 2
-	};
-
-	resourceManager->CreateVertexBuffer(sizeof(SpriteVertex), numVertices, vertices, &vbView, &vertexBuffer);
-	resourceManager->CreateIndexBuffer(sizeof(uint32), numIndices, indices, &ibView, &indexBuffer);
-
-	sm_vbView = vbView;
-	sm_ibView = ibView;
-	sm_vertexBuffer = vertexBuffer;
-	sm_indexBuffer = indexBuffer;
-}
-
-void SpriteObject::DestroyRootSignature()
+void LineObject::DestroyRootSignature()
 {
 	if (sm_rootSignature)
 	{
@@ -369,7 +290,7 @@ void SpriteObject::DestroyRootSignature()
 	}
 }
 
-void SpriteObject::DestroyPipelineState()
+void LineObject::DestroyPipelineState()
 {
 	if (sm_pipelineState)
 	{
@@ -378,16 +299,3 @@ void SpriteObject::DestroyPipelineState()
 	}
 }
 
-void SpriteObject::DestroyBuffers()
-{
-	if (sm_indexBuffer)
-	{
-		sm_indexBuffer->Release();
-		sm_indexBuffer = nullptr;
-	}
-	if (sm_vertexBuffer)
-	{
-		sm_vertexBuffer->Release();
-		sm_vertexBuffer = nullptr;
-	}
-}

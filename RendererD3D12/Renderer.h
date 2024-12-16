@@ -39,6 +39,7 @@ public:
 	virtual IT_MeshObject* CreateMeshObject() override;
 	virtual IT_SpriteObject* CreateSpriteObject() override;
 	virtual IT_SpriteObject* CreateSpriteObjectWithTexture(const wchar_t* filename, const RECT* rect) override;
+	virtual IT_LineObject* CreateLineObject() override;
 	virtual void* CreateFontObject(const wchar_t* fontName, float fontSize) override;
 	virtual void* CreateTextureFromFile(const wchar_t* filename) override;
 	virtual void* CreateTiledTexture(uint32 texWidth, uint32 texHeight, uint32 cellWidth, uint32 cellHeight) override;
@@ -50,10 +51,13 @@ public:
 	virtual void RenderMeshObject(IT_MeshObject* obj, Matrix worldRow) override;
 	virtual void RenderSpriteObject(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z) override;
 	virtual void RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z, const RECT* rect, void* textureHandle, const char* name) override;
+	virtual void RenderLineObject(IT_LineObject* obj, Matrix worldRow) override;
 	virtual void SetCameraPos(float x, float y, float z) override;
 	virtual void SetCameraPos(Vector3 camPos) override;
 	virtual void SetCamera(Vector3 camPos, Vector3 camDir) override;
 	virtual void SetCamera(float x, float y, float z, float dirX, float dirY, float dirZ) override;
+	virtual bool MousePicking(DirectX::BoundingBox boundingBox, float ndcX, float ndcY, Vector3* hitPos, float* hitDist, float* ratio) override;
+	virtual void MousePickingAfterMoveObject(float ndcX, float ndcY, Vector3* movePos, float ratio) override;
 	virtual uint32 GetCmdListCount() override;
 	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject) override;
 	virtual ULONG STDMETHODCALLTYPE AddRef(void) override;

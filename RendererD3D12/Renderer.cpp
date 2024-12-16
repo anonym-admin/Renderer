@@ -10,6 +10,7 @@
 #include "DescriptorPool.h"
 #include "RenderQueue.h"
 #include "CommandContext.h"
+#include "LineObject.h"
 
 /*
 =========
@@ -120,7 +121,7 @@ bool Renderer::Initialize(HWND hwnd, bool enableDebugLayer, bool enableGBV)
 	// Get physical core.
 	uint32 physicalCoreCount = 0;
 	uint32 logicalCoreCount = 0;
-	GenericUtils::GetPhysicalCoreCount(&physicalCoreCount, &logicalCoreCount);
+	GetPhysicalCoreCount(&physicalCoreCount, &logicalCoreCount);
 	m_renderThreadCount = physicalCoreCount;
 	if (m_renderThreadCount > MAX_THREAD_COUNT)
 	{
@@ -347,6 +348,13 @@ IT_SpriteObject* Renderer::CreateSpriteObjectWithTexture(const wchar_t* filename
 	return nullptr;
 }
 
+IT_LineObject* Renderer::CreateLineObject()
+{
+	LineObject* lineObject = new LineObject;
+	lineObject->Initialize(this);
+	return lineObject;
+}
+
 void* Renderer::CreateFontObject(const wchar_t* fontName, float fontSize)
 {
 	void* fontHandle = m_fontManager->CreateFontObject(fontName, fontSize);
@@ -499,6 +507,19 @@ void Renderer::RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, 
 	job.sprite.rect = rect;
 	job.sprite.texHandle = texHandle;
 	strcpy_s(job.sprite.name, name);
+	m_renderQueue[m_threadIdx]->Add(&job);
+
+	m_threadIdx = (m_threadIdx + 1) % m_renderThreadCount;
+}
+
+void Renderer::RenderLineObject(IT_LineObject* obj, Matrix worldRow)
+{
+	LineObject* lineObject = reinterpret_cast<LineObject*>(obj);
+
+	RENDER_JOB job = {};
+	job.type = RENDER_JOB_TYPE::RENDER_LINE_OBJECT;
+	job.obj = lineObject;
+	job.mesh.worldRow = worldRow;
 	m_renderQueue[m_threadIdx]->Add(&job);
 
 	m_threadIdx = (m_threadIdx + 1) % m_renderThreadCount;
@@ -850,6 +871,51 @@ void Renderer::SetCamera(float x, float y, float z, float dirX, float dirY, floa
 	m_camPos = Vector3(x, y, z);
 	m_camDir = Vector3(dirX, dirY, dirZ);
 	SetCamera(m_camPos, m_camDir);
+}
+
+bool Renderer::MousePicking(DirectX::BoundingBox boundingBox, float ndcX, float ndcY, Vector3* hitPos, float* hitDist, float* ratio)
+{
+	Vector3 ndcNearPos = Vector3(ndcX, ndcY, 0.0f);
+	Vector3 ndcFarPos = Vector3(ndcX, ndcY, 1.0f);
+
+	Matrix invViewProj = (m_viewRow * m_projRow).Invert();
+
+	Vector3 worldNearPos = Vector3::Transform(ndcNearPos, invViewProj);
+	Vector3 worldFarPos = Vector3::Transform(ndcFarPos, invViewProj);
+
+	Vector3 rayDir = worldFarPos - worldNearPos;
+	float rayLength = rayDir.Length();
+	rayDir.Normalize();
+
+	DirectX::SimpleMath::Ray ray(worldNearPos, rayDir);
+	float dist = 0.0f;
+	if (ray.Intersects(boundingBox, dist))
+	{
+		*hitDist = dist;
+		*ratio = dist / rayLength;
+		*hitPos = worldNearPos + rayDir * dist;
+
+		return true;
+	}
+
+	*hitDist = 0;
+	*ratio = 0;
+	*hitPos = Vector3(0.0f);
+
+	return false;
+}
+
+void Renderer::MousePickingAfterMoveObject(float ndcX, float ndcY, Vector3* movePos, float ratio)
+{
+	Vector3 ndcNearPos = Vector3(ndcX, ndcY, 0.0f);
+	Vector3 ndcFarPos = Vector3(ndcX, ndcY, 1.0f);
+
+	Matrix invViewProj = (m_viewRow * m_projRow).Invert();
+
+	Vector3 worldNearPos = Vector3::Transform(ndcNearPos, invViewProj);
+	Vector3 worldFarPos = Vector3::Transform(ndcFarPos, invViewProj);
+
+	*movePos = worldNearPos + ratio * (worldFarPos - worldNearPos);
 }
 
 uint32 Renderer::GetCmdListCount()

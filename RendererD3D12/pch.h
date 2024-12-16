@@ -26,7 +26,7 @@ using namespace DirectX;
 #include "../../Common/Type.h"
 #include "../../CommonLib/CommonLib/LinkedList.h"
 #include "../../CommonLib/CommonLib/HashTable.h"
-#include "../../GenericUtils.h"
+#include "../../CommonLib/CommonLib/GenericUtils.h"
 #include "D3DUtils.h"
 #include "RendererType.h"
 #include "RenderThread.h"
