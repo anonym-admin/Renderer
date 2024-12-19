@@ -399,6 +399,17 @@ void* Renderer::CreateDynamicTexture(uint32 texWidth, uint32 texHeight, const ch
 	return handle;
 }
 
+void* Renderer::CreateDummyTexture(uint32 texWidth, uint32 texHeight)
+{
+	void* handle = m_textureManager->CreateDummyTexture(texWidth, texHeight);
+	if (!handle)
+	{
+		__debugbreak();
+	}
+
+	return handle;
+}
+
 void Renderer::WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, uint32 destPitch, int32* texWidth, int32* texHeight, void* fontHandle, const wchar_t* contentsString, uint32 strLen, FONT_COLOR_TYPE type)
 {
 	FONT_HANDLE* handle = reinterpret_cast<FONT_HANDLE*>(fontHandle);

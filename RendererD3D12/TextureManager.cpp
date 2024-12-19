@@ -167,6 +167,61 @@ TEXTURE_HANDLE* TextureManager::CreateDynamicTexture(uint32 texWidth, uint32 tex
 	return textureHandle;
 }
 
+TEXTURE_HANDLE* TextureManager::CreateDummyTexture(uint32 texWidth, uint32 texHeight)
+{
+	const wchar_t* filename = L"Dummy";
+	ID3D12Device5* device = m_renderer->GetDevice();
+	ID3D12Resource* texResource = nullptr;
+	ResourceManager* resourceManager = m_renderer->GetReourceManager();
+	DescriptorAllocator* descriptorAllocator = m_renderer->GetDescriptorAllocator();
+	D3D12_RESOURCE_DESC texDesc = {};
+	TEXTURE_HANDLE* textureHandle = nullptr;
+	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
+
+	uint8* image = (uint8*)malloc(texWidth * texHeight * 4);
+
+	void* findValue = HT_Find(m_hashTable, (void*)filename);
+	if (findValue)
+	{
+		textureHandle = reinterpret_cast<TEXTURE_HANDLE*>(findValue);
+	}
+	else
+	{
+		resourceManager->CreateTextureWidthImageData(&texResource, image, &texDesc, texWidth, texHeight, DXGI_FORMAT_R8G8B8A8_UNORM);
+		if (texResource)
+		{
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+			srvDesc.Format = texDesc.Format;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Texture2D.MipLevels = texDesc.MipLevels;
+
+			descriptorAllocator->AllocateDescriptorHeap(&srv);
+			if (srv.ptr)
+			{
+				device->CreateShaderResourceView(texResource, &srvDesc, srv);
+
+				textureHandle = new TEXTURE_HANDLE;
+				::memset(textureHandle, 0, sizeof(TEXTURE_HANDLE));
+				textureHandle->textureResource = texResource;
+				textureHandle->srv = srv;
+
+				HT_Insert(m_hashTable, (void*)filename, (void*)textureHandle);
+			}
+			else
+			{
+				texResource->Release();
+				texResource = nullptr;
+			}
+		}
+	}
+
+	delete[] image;
+	image = nullptr;
+
+	return textureHandle;
+}
+
 void TextureManager::DestroyTexture(TEXTURE_HANDLE* textureHandle)
 {
 	DescriptorAllocator* descriptorAllocator = m_renderer->GetDescriptorAllocator();

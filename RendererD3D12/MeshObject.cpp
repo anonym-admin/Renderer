@@ -130,6 +130,10 @@ void MeshObject::CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle)
 		{
 			meshes[i].textureHandle = (TEXTURE_HANDLE*)m_renderer->CreateTextureFromFile(meshDatas[i].textureFileaname);
 		}
+		else
+		{
+			meshes[i].textureHandle = (TEXTURE_HANDLE*)m_renderer->CreateDummyTexture();
+		}
 	}
 
 	m_numMeshes = numMeshes;

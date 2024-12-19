@@ -1,6 +1,6 @@
 #pragma once
 
-#define MULTI_THREAD_RENDERING 1
+#define MULTI_THREAD_RENDERING 0
 
 #include "../../Interface/IT_Renderer.h"
 
@@ -44,6 +44,7 @@ public:
 	virtual void* CreateTextureFromFile(const wchar_t* filename) override;
 	virtual void* CreateTiledTexture(uint32 texWidth, uint32 texHeight, uint32 cellWidth, uint32 cellHeight) override;
 	virtual void* CreateDynamicTexture(uint32 texWidth, uint32 texHeight, const char* name = nullptr) override;
+	virtual void* CreateDummyTexture(uint32 texWidth = 1, uint32 texHeight = 1) override;
 	virtual void WriteTextToBitmap(uint8* destImage, uint32 destWidth, uint32 destHeight, uint32 destPitch, int32* texWidth, int32* texHeight, void* fontHandle, const wchar_t* contentsString, uint32 strLen, FONT_COLOR_TYPE type = FONT_COLOR_TYPE::WHITE) override;
 	virtual void UpdateTextureWidthImage(void* textureHandle, const uint8* srcImage, uint32 srcWidth, uint32 srcHeight);
 	virtual void DestroyFontObject(void* fontObj) override;
