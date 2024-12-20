@@ -49,7 +49,7 @@ public:
 	virtual void UpdateTextureWidthImage(void* textureHandle, const uint8* srcImage, uint32 srcWidth, uint32 srcHeight);
 	virtual void DestroyFontObject(void* fontObj) override;
 	virtual void DestroyTexture(void* textureHandle) override;
-	virtual void RenderMeshObject(IT_MeshObject* obj, Matrix worldRow) override;
+	virtual void RenderMeshObject(IT_MeshObject* obj, Matrix worldRow, bool isWire = false) override;
 	virtual void RenderSpriteObject(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z) override;
 	virtual void RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z, const RECT* rect, void* textureHandle, const char* name) override;
 	virtual void RenderLineObject(IT_LineObject* obj, Matrix worldRow) override;

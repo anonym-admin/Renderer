@@ -472,7 +472,7 @@ void Renderer::DestroyTexture(void* textureHandle)
 	m_textureManager->DestroyTexture(texHandle);
 }
 
-void Renderer::RenderMeshObject(IT_MeshObject* obj, Matrix worldRow)
+void Renderer::RenderMeshObject(IT_MeshObject* obj, Matrix worldRow, bool isWire)
 {
 	MeshObject* meshObj = reinterpret_cast<MeshObject*>(obj);
 
@@ -480,6 +480,7 @@ void Renderer::RenderMeshObject(IT_MeshObject* obj, Matrix worldRow)
 	job.type = RENDER_JOB_TYPE::RENDER_MESH_OBJECT;
 	job.obj = meshObj;
 	job.mesh.worldRow = worldRow;
+	job.mesh.isWire = isWire;
 	m_renderQueue[m_threadIdx]->Add(&job);
 
 	m_threadIdx = (m_threadIdx + 1) % m_renderThreadCount;

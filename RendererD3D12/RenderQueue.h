@@ -10,6 +10,7 @@ enum class RENDER_JOB_TYPE
 struct MESH_RENDER_JOB
 {
 	Matrix worldRow;
+	bool isWire;
 };
 
 struct SPRITE_RENDER_JOB

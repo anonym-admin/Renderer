@@ -24,7 +24,7 @@ public:
 
 	/*DLL Inner*/
 	bool Initialize(Renderer* renderer);
-	void Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matrix worldRow);
+	void Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matrix worldRow, bool isWire = false);
 
 	/*Interface*/
 	virtual void CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle) override;
@@ -46,7 +46,8 @@ private:
 private:
 	static uint32 sm_initRefCount;
 	static ID3D12RootSignature* sm_rootSignature;
-	static ID3D12PipelineState* sm_pipelineState;
+	static ID3D12PipelineState* sm_defaultPSO;
+	static ID3D12PipelineState* sm_wirePSO;
 	MESH_CONST_DATA m_constData = {};
 	Renderer* m_renderer = nullptr;
 	MESH* m_meshes = nullptr;

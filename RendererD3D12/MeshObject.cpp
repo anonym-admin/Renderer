@@ -16,7 +16,8 @@ Mesh Object
 
 uint32 MeshObject::sm_initRefCount;
 ID3D12RootSignature* MeshObject::sm_rootSignature;
-ID3D12PipelineState* MeshObject::sm_pipelineState;
+ID3D12PipelineState* MeshObject::sm_defaultPSO;
+ID3D12PipelineState* MeshObject::sm_wirePSO;
 
 MeshObject::MeshObject()
 {
@@ -43,7 +44,7 @@ bool MeshObject::Initialize(Renderer* renderer)
 	return result;
 }
 
-void MeshObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matrix worldRow)
+void MeshObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matrix worldRow, bool isWire)
 {
 	ID3D12Device5* device = m_renderer->GetDevice();
 	ConstantBufferManager* cbManager = m_renderer->GetConstantBufferManager(threadIdx);
@@ -69,7 +70,7 @@ void MeshObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matr
 	descPool->Alloc(&cpuHandle, &gpuHandle, DESCRIPTOR_COUNT_PER_OBJ + m_numMeshes * DESCRIPTOR_COUNT_PER_MESH_DATA);
 
 	cmdList->SetGraphicsRootSignature(sm_rootSignature);
-	cmdList->SetPipelineState(sm_pipelineState);
+	cmdList->SetPipelineState(isWire ? sm_wirePSO : sm_defaultPSO);
 	cmdList->SetDescriptorHeaps(1, &descHeap);
 
 	device->CopyDescriptorsSimple(1, cpuHandle, constantBuffer->GetCbvHandle(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -358,7 +359,10 @@ void MeshObject::CreatePipelineState()
 	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	psoDesc.SampleDesc.Count = 1;
-	ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&sm_pipelineState)));
+	ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&sm_defaultPSO)));
+
+	psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+	ThrowIfFailed(device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&sm_wirePSO)));
 
 	if (vertexShader)
 	{
@@ -388,9 +392,14 @@ void MeshObject::DestroyRootSignature()
 
 void MeshObject::DestroyPipelineState()
 {
-	if (sm_pipelineState)
+	if (sm_wirePSO)
 	{
-		sm_pipelineState->Release();
-		sm_pipelineState = nullptr;
+		sm_wirePSO->Release();
+		sm_wirePSO = nullptr;
+	}
+	if (sm_defaultPSO)
+	{
+		sm_defaultPSO->Release();
+		sm_defaultPSO = nullptr;
 	}
 }
