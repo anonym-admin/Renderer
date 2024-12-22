@@ -59,10 +59,12 @@ public:
 	virtual void SetCameraRot(const Vector3 dir) override;
 	virtual void SetCamera(Vector3 camPos, Vector3 camDir) override;
 	virtual void SetCamera(float x, float y, float z, float dirX, float dirY, float dirZ) override;
-	virtual void MoveRightCamera(float dt) override;
-	virtual void MoveFrontCamera(float dt) override;
-	virtual void MoveUpCamera(float dt) override;
+	virtual void MoveRightCamera(const float speed) override;
+	virtual void MoveFrontCamera(const float speed) override;
+	virtual void MoveUpCamera(const float speed) override;
 	virtual bool MousePicking(DirectX::BoundingBox boundingBox, float ndcX, float ndcY, Vector3* hitPos, float* hitDist, float* ratio) override;
+	virtual bool MousePicking(DirectX::BoundingSphere boundingSphere, float ndcX, float ndcY, Vector3* hitPos, float* hitDist, float* ratio) override;
+	virtual bool MousePicking(DirectX::SimpleMath::Plane plane, float ndcX, float ndcY, Vector3* hitPos, float* hitDist, float* ratio) override;
 	virtual void MousePickingAfterMoveObject(float ndcX, float ndcY, Vector3* movePos, float ratio) override;
 	virtual uint32 GetCmdListCount() override;
 	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject) override;

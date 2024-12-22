@@ -78,7 +78,7 @@ uint32 RenderQueue::Process(uint32 threadIdx, CommandContext* cmdCtx, ID3D12Comm
 				{
 					__debugbreak();
 				}
-				meshObj->Draw(cmdList, threadIdx, job->mesh.worldRow);
+				meshObj->Draw(cmdList, threadIdx, job->mesh.worldRow, job->mesh.isWire);
 			}
 			break;
 			case RENDER_JOB_TYPE::RENDER_SPRITE_OBJECT:

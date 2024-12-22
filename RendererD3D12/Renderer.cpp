@@ -368,6 +368,12 @@ void* Renderer::CreateFontObject(const wchar_t* fontName, float fontSize)
 
 void* Renderer::CreateTextureFromFile(const wchar_t* filename)
 {
+	if (!filename)
+	{
+		__debugbreak();
+	}
+	wprintf_s(L"%s load file\n", filename);
+
 	void* handle = m_textureManager->CreateTextureFromFile(filename);
 	if (!handle)
 	{
@@ -899,25 +905,25 @@ void Renderer::SetCamera(float x, float y, float z, float dirX, float dirY, floa
 	SetCamera(m_camPos, m_camDir);
 }
 
-void Renderer::MoveRightCamera(float dt)
+void Renderer::MoveRightCamera(const float speed)
 {
 	Vector3 up = Vector3(0.0f, 1.0f, 0.0f);
 	Vector3 right = up.Cross(m_camDir);
 	right.Normalize();
-	m_camPos = m_camPos + dt * right;
+	m_camPos = m_camPos + speed * right;
 	SetCamera(m_camPos, m_camDir);
 }
 
-void Renderer::MoveFrontCamera(float dt)
+void Renderer::MoveFrontCamera(const float speed)
 {
-	m_camPos = m_camPos + dt * m_camDir;
+	m_camPos = m_camPos + speed * m_camDir;
 	SetCamera(m_camPos, m_camDir);
 }
 
-void Renderer::MoveUpCamera(float dt)
+void Renderer::MoveUpCamera(const float speed)
 {
 	Vector3 up = Vector3(0.0f, 1.0f, 0.0f);
-	m_camPos = m_camPos + dt * up;
+	m_camPos = m_camPos + speed * up;
 	SetCamera(m_camPos, m_camDir);
 }
 
@@ -938,6 +944,70 @@ bool Renderer::MousePicking(DirectX::BoundingBox boundingBox, float ndcX, float 
 	DirectX::SimpleMath::Ray ray(worldNearPos, rayDir);
 	float dist = 0.0f;
 	if (ray.Intersects(boundingBox, dist))
+	{
+		*hitDist = dist;
+		*ratio = dist / rayLength;
+		*hitPos = worldNearPos + rayDir * dist;
+
+		return true;
+	}
+
+	*hitDist = 0;
+	*ratio = 0;
+	*hitPos = Vector3(0.0f);
+
+	return false;
+}
+
+bool Renderer::MousePicking(DirectX::BoundingSphere boundingSphere, float ndcX, float ndcY, Vector3* hitPos, float* hitDist, float* ratio)
+{
+	Vector3 ndcNearPos = Vector3(ndcX, ndcY, 0.0f);
+	Vector3 ndcFarPos = Vector3(ndcX, ndcY, 1.0f);
+
+	Matrix invViewProj = (m_viewRow * m_projRow).Invert();
+
+	Vector3 worldNearPos = Vector3::Transform(ndcNearPos, invViewProj);
+	Vector3 worldFarPos = Vector3::Transform(ndcFarPos, invViewProj);
+
+	Vector3 rayDir = worldFarPos - worldNearPos;
+	float rayLength = rayDir.Length();
+	rayDir.Normalize();
+
+	DirectX::SimpleMath::Ray ray(worldNearPos, rayDir);
+	float dist = 0.0f;
+	if (ray.Intersects(boundingSphere, dist))
+	{
+		*hitDist = dist;
+		*ratio = dist / rayLength;
+		*hitPos = worldNearPos + rayDir * dist;
+
+		return true;
+	}
+
+	*hitDist = 0;
+	*ratio = 0;
+	*hitPos = Vector3(0.0f);
+
+	return false;
+}
+
+bool Renderer::MousePicking(DirectX::SimpleMath::Plane plane, float ndcX, float ndcY, Vector3* hitPos, float* hitDist, float* ratio)
+{
+	Vector3 ndcNearPos = Vector3(ndcX, ndcY, 0.0f);
+	Vector3 ndcFarPos = Vector3(ndcX, ndcY, 1.0f);
+
+	Matrix invViewProj = (m_viewRow * m_projRow).Invert();
+
+	Vector3 worldNearPos = Vector3::Transform(ndcNearPos, invViewProj);
+	Vector3 worldFarPos = Vector3::Transform(ndcFarPos, invViewProj);
+
+	Vector3 rayDir = worldFarPos - worldNearPos;
+	float rayLength = rayDir.Length();
+	rayDir.Normalize();
+
+	DirectX::SimpleMath::Ray ray(worldNearPos, rayDir);
+	float dist = 0.0f;
+	if (ray.Intersects(plane, dist))
 	{
 		*hitDist = dist;
 		*ratio = dist / rayLength;
