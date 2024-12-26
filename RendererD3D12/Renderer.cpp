@@ -338,8 +338,6 @@ void Renderer::Present()
 
 	WaitForGpu(m_fenceFramePendingValue[framePendingIdx]);
 
-	printf("turn %u\n", count++);
-
 	for (uint32 threadIdx = 0; threadIdx < m_renderThreadCount; threadIdx++)
 	{
 		m_descriptorPool[framePendingIdx][threadIdx]->Free();

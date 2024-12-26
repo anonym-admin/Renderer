@@ -29,7 +29,6 @@ public:
 	/*Interface*/
 	virtual void CreateMeshBuffers(const MeshData* meshData, const uint32 numMeshes) override;
 	virtual void SetTexture(void* textureHandle) override;
-	virtual void SetTransform(Matrix worldRow) override;
 	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject);
 	virtual ULONG STDMETHODCALLTYPE AddRef(void);
 	virtual ULONG STDMETHODCALLTYPE Release(void);
@@ -48,7 +47,6 @@ private:
 	static ID3D12RootSignature* sm_rootSignature;
 	static ID3D12PipelineState* sm_defaultPSO;
 	static ID3D12PipelineState* sm_wirePSO;
-	MESH_CONST_DATA m_constData = {};
 	Renderer* m_renderer = nullptr;
 	MESH* m_meshes = nullptr;
 	uint32 m_refCount = 0;

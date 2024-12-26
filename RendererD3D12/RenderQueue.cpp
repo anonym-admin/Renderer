@@ -79,8 +79,6 @@ uint32 RenderQueue::Process(uint32 threadIdx, CommandContext* cmdCtx, ID3D12Comm
 					__debugbreak();
 				}
 
-				printf("%lf ", job->mesh.worldRow._41);
-
 				meshObj->Draw(cmdList, threadIdx, job->mesh.worldRow, job->mesh.isWire);
 			}
 			break;

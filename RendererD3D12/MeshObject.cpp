@@ -53,9 +53,6 @@ void MeshObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matr
 	ID3D12DescriptorHeap* descHeap = descPool->GetDesciptorHeap();
 
 	ConstantBuffer* constantBuffer = cbPool->Alloc();
-	
-	printf("%p ", constantBuffer);
-
 	MESH_CONST_DATA constData = {};
 
 	if (constantBuffer)
@@ -158,11 +155,6 @@ void MeshObject::SetTexture(void* textureHandle)
 	{
 		m_meshes[i].textureHandle = texHandle;
 	}
-}
-
-void MeshObject::SetTransform(Matrix worldRow)
-{
-	m_constData.world = worldRow.Transpose();
 }
 
 HRESULT __stdcall MeshObject::QueryInterface(REFIID riid, void** ppvObject)

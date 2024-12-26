@@ -50,7 +50,6 @@ private:
 	static ID3D12Resource* sm_indexBuffer;
 	Renderer* m_renderer = nullptr;
 	uint32 m_refCount = 1;
-	SPRITE_CONST_DATA m_constData = {};
 	TEXTURE_HANDLE* m_textureHandle = nullptr;
 	RECT m_rect = {};
 	Vector2 m_scale = Vector2(1.0f);

@@ -122,24 +122,26 @@ void SpriteObject::DrawWithTexture(ID3D12GraphicsCommandList* cmdList, uint32 th
 	}
 
 	ConstantBuffer* constantBuffer = cbPool->Alloc();
+	SPRITE_CONST_DATA constData = {};
+
 	if (constantBuffer)
 	{
-		m_constData.screenResolution.x = static_cast<float>(m_renderer->GetScreenWidth());
-		m_constData.screenResolution.y = static_cast<float>(m_renderer->GetScreenHegiht());
-		m_constData.posOffset.x = posX;
-		m_constData.posOffset.y = posY;
-		m_constData.scale.x = scaleX;
-		m_constData.scale.y = scaleY;
-		m_constData.texSize.x = static_cast<float>(texWidth);
-		m_constData.texSize.y = static_cast<float>(texHeight);
-		m_constData.texOffset.x = static_cast<float>(rect->left);
-		m_constData.texOffset.y = static_cast<float>(rect->top);
-		m_constData.texScale.x = static_cast<float>(rect->right - rect->left);
-		m_constData.texScale.y = static_cast<float>(rect->bottom - rect->top);
-		m_constData.depthZ = z;
-		m_constData.alpha = 1.0f;
+		constData.screenResolution.x = static_cast<float>(m_renderer->GetScreenWidth());
+		constData.screenResolution.y = static_cast<float>(m_renderer->GetScreenHegiht());
+		constData.posOffset.x = posX;
+		constData.posOffset.y = posY;
+		constData.scale.x = scaleX;
+		constData.scale.y = scaleY;
+		constData.texSize.x = static_cast<float>(texWidth);
+		constData.texSize.y = static_cast<float>(texHeight);
+		constData.texOffset.x = static_cast<float>(rect->left);
+		constData.texOffset.y = static_cast<float>(rect->top);
+		constData.texScale.x = static_cast<float>(rect->right - rect->left);
+		constData.texScale.y = static_cast<float>(rect->bottom - rect->top);
+		constData.depthZ = z;
+		constData.alpha = 1.0f;
 
-		constantBuffer->Upload(&m_constData);
+		constantBuffer->Upload(&constData);
 	}
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuHandle = {};
