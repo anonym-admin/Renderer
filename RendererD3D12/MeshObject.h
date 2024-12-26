@@ -27,7 +27,7 @@ public:
 	void Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matrix worldRow, bool isWire = false);
 
 	/*Interface*/
-	virtual void CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle) override;
+	virtual void CreateMeshBuffers(const MeshData* meshData, const uint32 numMeshes) override;
 	virtual void SetTexture(void* textureHandle) override;
 	virtual void SetTransform(Matrix worldRow) override;
 	virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, _COM_Outptr_ void __RPC_FAR* __RPC_FAR* ppvObject);

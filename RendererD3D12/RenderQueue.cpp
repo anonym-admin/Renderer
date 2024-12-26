@@ -57,7 +57,7 @@ uint32 RenderQueue::Process(uint32 threadIdx, CommandContext* cmdCtx, ID3D12Comm
 {
 	const RENDER_JOB* job = nullptr;
 	ID3D12GraphicsCommandList* cmdList = nullptr;
-	ID3D12CommandList* cmdLists[32] = {};
+	ID3D12GraphicsCommandList* cmdLists[64] = {};
 	uint32 processCount = 0;
 	uint32 procCountPerCmdList = 0;
 	uint32 cmdListCount = 0;
@@ -78,6 +78,9 @@ uint32 RenderQueue::Process(uint32 threadIdx, CommandContext* cmdCtx, ID3D12Comm
 				{
 					__debugbreak();
 				}
+
+				printf("%lf ", job->mesh.worldRow._41);
+
 				meshObj->Draw(cmdList, threadIdx, job->mesh.worldRow, job->mesh.isWire);
 			}
 			break;
@@ -142,6 +145,7 @@ uint32 RenderQueue::Process(uint32 threadIdx, CommandContext* cmdCtx, ID3D12Comm
 			cmdCtx->Close();
 			cmdLists[cmdListCount] = cmdList;
 			cmdListCount++;
+			cmdList = nullptr;
 			procCountPerCmdList = 0;
 		}
 	}
@@ -150,12 +154,14 @@ uint32 RenderQueue::Process(uint32 threadIdx, CommandContext* cmdCtx, ID3D12Comm
 	{
 		cmdCtx->Close();
 		cmdLists[cmdListCount] = cmdList;
+		cmdList = nullptr;
 		cmdListCount++;
+		procCountPerCmdList = 0;
 	}
 
 	if (cmdListCount)
 	{
-		cmdQueue->ExecuteCommandLists(cmdListCount, cmdLists);
+		cmdQueue->ExecuteCommandLists(cmdListCount, (ID3D12CommandList**)cmdLists);
 	}
 	
 	m_jobCount = 0;

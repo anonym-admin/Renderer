@@ -213,11 +213,33 @@ bool Renderer::Initialize(HWND hwnd, bool enableDebugLayer, bool enableGBV)
 	// Create rtv descriptor heap.
 	CreateDescriptorHeapForRtv();
 
+	// Create render target view.
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart());
 	for (uint32 i = 0; i < Renderer::FRAME_COUNT; i++)
 	{
-		ThrowIfFailed(m_swapChain->GetBuffer(i, IID_PPV_ARGS(&m_renderTargets[i])));
-		m_device->CreateRenderTargetView(m_renderTargets[i], nullptr, rtvHandle);
+		ThrowIfFailed(m_swapChain->GetBuffer(i, IID_PPV_ARGS(&m_backBufferRtv[i])));
+		m_device->CreateRenderTargetView(m_backBufferRtv[i], nullptr, rtvHandle);
+		rtvHandle.Offset(1, m_rtvDescriptorSize);
+	}
+	{
+		D3D12_RESOURCE_DESC resDesc = {};
+		resDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		resDesc.Alignment = 0;
+		resDesc.Width = m_screenWidth;
+		resDesc.Height = m_screenHeight;
+		resDesc.DepthOrArraySize = 1;
+		resDesc.MipLevels = 1;
+		resDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		resDesc.SampleDesc.Count = 1;
+		resDesc.SampleDesc.Quality = 0;
+		resDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+		float clearColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+		CD3DX12_CLEAR_VALUE optClear(DXGI_FORMAT_R8G8B8A8_UNORM, clearColor);
+
+		ThrowIfFailed(m_device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, &optClear, IID_PPV_ARGS(&m_indexRtv)));
+		m_device->CreateRenderTargetView(m_indexRtv, nullptr, rtvHandle);
 		rtvHandle.Offset(1, m_rtvDescriptorSize);
 	}
 
@@ -253,14 +275,10 @@ void Renderer::BeginRender()
 	CommandContext* cmdCtx = m_cmdCtx[m_framePendingIdx][0];
 	ID3D12GraphicsCommandList* cmdList = cmdCtx->GetCurrentCommandList();
 
-	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_backBufferRtv[m_frameIdx], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIdx, m_rtvDescriptorSize);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
-
-	//cmdList->RSSetViewports(1, &m_viewPort);
-	//cmdList->RSSetScissorRects(1, &m_scissorRect);
-	//cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
 	const float clearColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
 	cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
@@ -293,13 +311,15 @@ void Renderer::EndRender()
 #endif
 
 	ID3D12GraphicsCommandList* cmdList = cmdCtx->GetCurrentCommandList();
-	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_backBufferRtv[m_frameIdx], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
 	cmdCtx->CloseAndExcute(m_cmdQueue);
 }
 
 void Renderer::Present()
 {
+	static uint32 count = 0;
+
 	Fence();
 
 	uint32 syncInterval = m_syncInterval;
@@ -317,6 +337,8 @@ void Renderer::Present()
 	uint32 framePendingIdx = (m_framePendingIdx + 1) % FRAME_PENDING_COUNT;
 
 	WaitForGpu(m_fenceFramePendingValue[framePendingIdx]);
+
+	printf("turn %u\n", count++);
 
 	for (uint32 threadIdx = 0; threadIdx < m_renderThreadCount; threadIdx++)
 	{
@@ -345,7 +367,9 @@ IT_SpriteObject* Renderer::CreateSpriteObject()
 
 IT_SpriteObject* Renderer::CreateSpriteObjectWithTexture(const wchar_t* filename, const RECT* rect)
 {
-	return nullptr;
+	SpriteObject* spriteObject = new SpriteObject;
+	spriteObject->Initialize(this, filename, rect);
+	return spriteObject;
 }
 
 IT_LineObject* Renderer::CreateLineObject()
@@ -509,7 +533,7 @@ void Renderer::RenderSpriteObject(IT_SpriteObject* obj, uint32 posX, uint32 posY
 	m_threadIdx = (m_threadIdx + 1) % m_renderThreadCount;
 }
 
-void Renderer::RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z, const RECT* rect, void* textureHandle, const char* name)
+void Renderer::RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z, const RECT* rect, void* textureHandle)
 {
 	SpriteObject* spriteObj = reinterpret_cast<SpriteObject*>(obj);
 	TEXTURE_HANDLE* texHandle = reinterpret_cast<TEXTURE_HANDLE*>(textureHandle);
@@ -524,7 +548,6 @@ void Renderer::RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, 
 	job.sprite.z = z;
 	job.sprite.rect = rect;
 	job.sprite.texHandle = texHandle;
-	strcpy_s(job.sprite.name, name);
 	m_renderQueue[m_threadIdx]->Add(&job);
 
 	m_threadIdx = (m_threadIdx + 1) % m_renderThreadCount;
@@ -602,12 +625,18 @@ void Renderer::CleanUp()
 	DestroyDepthStencilView();
 	DestroyDescriptorHeapForDsv();
 
+	if (m_indexRtv)
+	{
+		m_indexRtv->Release();
+		m_indexRtv = nullptr;
+	}
+
 	for (uint32 i = 0; i < Renderer::FRAME_COUNT; i++)
 	{
-		if (m_renderTargets[i])
+		if (m_backBufferRtv[i])
 		{
-			m_renderTargets[i]->Release();
-			m_renderTargets[i] = nullptr;
+			m_backBufferRtv[i]->Release();
+			m_backBufferRtv[i] = nullptr;
 		}
 	}
 
@@ -716,7 +745,7 @@ ULONG __stdcall Renderer::Release(void)
 void Renderer::CreateDescriptorHeapForRtv()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-	rtvHeapDesc.NumDescriptors = Renderer::FRAME_COUNT;
+	rtvHeapDesc.NumDescriptors = Renderer::FRAME_COUNT + 1; // +1 > indexRtv
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	ThrowIfFailed(m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap)));
@@ -760,11 +789,11 @@ void Renderer::CreateDepthStencilView(uint32 width, uint32 height)
 		D3D12_TEXTURE_LAYOUT_UNKNOWN,
 		D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
-	ThrowIfFailed(m_device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &depthOptimizedClearValue, IID_PPV_ARGS(&m_depthStencilView)));
-	ThrowIfFailed(m_depthStencilView->SetName(L"Renderer::depthStencilView"));
+	ThrowIfFailed(m_device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, &depthOptimizedClearValue, IID_PPV_ARGS(&m_mainDsv)));
+	ThrowIfFailed(m_mainDsv->SetName(L"Renderer::depthStencilView"));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
-	m_device->CreateDepthStencilView(m_depthStencilView, &dsvDesc, dsvHandle);
+	m_device->CreateDepthStencilView(m_mainDsv, &dsvDesc, dsvHandle);
 }
 
 void Renderer::CreateFence()
@@ -817,10 +846,10 @@ void Renderer::DestroyDescriptorHeapForDsv()
 
 void Renderer::DestroyDepthStencilView()
 {
-	if (m_depthStencilView)
+	if (m_mainDsv)
 	{
-		m_depthStencilView->Release();
-		m_depthStencilView = nullptr;
+		m_mainDsv->Release();
+		m_mainDsv = nullptr;
 	}
 }
 

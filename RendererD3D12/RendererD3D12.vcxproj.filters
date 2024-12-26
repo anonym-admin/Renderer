@@ -13,9 +13,6 @@
     <ClCompile Include="pch.cpp">
       <Filter>Main</Filter>
     </ClCompile>
-    <ClCompile Include="MeshObject.cpp">
-      <Filter>Main</Filter>
-    </ClCompile>
     <ClCompile Include="ConstantBuffer.cpp">
       <Filter>Main</Filter>
     </ClCompile>
@@ -26,9 +23,6 @@
       <Filter>Main</Filter>
     </ClCompile>
     <ClCompile Include="ConstantBufferPool.cpp">
-      <Filter>Main</Filter>
-    </ClCompile>
-    <ClCompile Include="SpriteObject.cpp">
       <Filter>Main</Filter>
     </ClCompile>
     <ClCompile Include="ConstantBufferManager.cpp">
@@ -52,8 +46,14 @@
     <ClCompile Include="RenderThread.cpp">
       <Filter>Main</Filter>
     </ClCompile>
+    <ClCompile Include="SpriteObject.cpp">
+      <Filter>Main\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="MeshObject.cpp">
+      <Filter>Main\Object</Filter>
+    </ClCompile>
     <ClCompile Include="LineObject.cpp">
-      <Filter>Main</Filter>
+      <Filter>Main\Object</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -70,9 +70,6 @@
       <Filter>Main</Filter>
     </ClInclude>
     <ClInclude Include="pch.h">
-      <Filter>Main</Filter>
-    </ClInclude>
-    <ClInclude Include="MeshObject.h">
       <Filter>Main</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Common\MeshData.h">
@@ -96,9 +93,6 @@
     <ClInclude Include="ConstantBufferPool.h">
       <Filter>Main</Filter>
     </ClInclude>
-    <ClInclude Include="SpriteObject.h">
-      <Filter>Main</Filter>
-    </ClInclude>
     <ClInclude Include="ConstantBufferManager.h">
       <Filter>Main\Manager</Filter>
     </ClInclude>
@@ -120,8 +114,14 @@
     <ClInclude Include="RenderThread.h">
       <Filter>Main</Filter>
     </ClInclude>
+    <ClInclude Include="SpriteObject.h">
+      <Filter>Main\Object</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshObject.h">
+      <Filter>Main\Object</Filter>
+    </ClInclude>
     <ClInclude Include="LineObject.h">
-      <Filter>Main</Filter>
+      <Filter>Main\Object</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -145,6 +145,9 @@
     </Filter>
     <Filter Include="Main\Manager">
       <UniqueIdentifier>{378a7193-9786-4e80-b0a4-557f6b490457}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\Object">
+      <UniqueIdentifier>{567ab883-678c-45f3-9b43-df6a89329467}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

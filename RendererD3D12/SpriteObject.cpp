@@ -64,6 +64,22 @@ bool SpriteObject::Initialize(Renderer* renderer, const wchar_t* filename, const
 		texWidth = static_cast<uint32>(desc.Width);
 		texHeight = static_cast<uint32>(desc.Height);
 	}
+	if (rect)
+	{
+		m_rect = *rect;
+		m_scale.x = static_cast<float>(rect->right - rect->left) / texWidth;
+		m_scale.y = static_cast<float>(rect->bottom - rect->top) / texHeight;
+	}
+	else
+	{
+		if (m_textureHandle)
+		{
+			m_rect.left = 0;
+			m_rect.top = 0;
+			m_rect.right = texWidth;
+			m_rect.bottom = texHeight;
+		}
+	}
 
 	sm_initRefCount++;
 
@@ -72,7 +88,8 @@ bool SpriteObject::Initialize(Renderer* renderer, const wchar_t* filename, const
 
 void SpriteObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, float posX, float posY, float scaleX, float scaleY, float z)
 {
-
+	Vector2 scale = Vector2(m_scale.x * scaleX, m_scale.y * scaleY);
+	DrawWithTexture(cmdList, threadIdx, posX, posY, scale.x, scale.y, z, &m_rect, m_textureHandle);
 }
 
 void SpriteObject::DrawWithTexture(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, float posX, float posY, float scaleX, float scaleY, float z, const RECT* rect, TEXTURE_HANDLE* textureHandle)

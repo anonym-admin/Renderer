@@ -1,6 +1,6 @@
 #pragma once
 
-#define MULTI_THREAD_RENDERING 0
+#define MULTI_THREAD_RENDERING 1
 
 #include "../../Interface/IT_Renderer.h"
 
@@ -51,7 +51,7 @@ public:
 	virtual void DestroyTexture(void* textureHandle) override;
 	virtual void RenderMeshObject(IT_MeshObject* obj, Matrix worldRow, bool isWire = false) override;
 	virtual void RenderSpriteObject(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z) override;
-	virtual void RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z, const RECT* rect, void* textureHandle, const char* name) override;
+	virtual void RenderSpriteObjectWithTexture(IT_SpriteObject* obj, uint32 posX, uint32 posY, float scaleX, float scaleY, float z, const RECT* rect, void* textureHandle) override;
 	virtual void RenderLineObject(IT_LineObject* obj, Matrix worldRow) override;
 	virtual void SetCameraPos(float x, float y, float z) override;
 	virtual void SetCameraPos(Vector3 camPos) override;
@@ -117,8 +117,9 @@ private:
 	D3D12_RECT m_scissorRect = {};
 	ID3D12DescriptorHeap* m_rtvHeap = nullptr;
 	ID3D12DescriptorHeap* m_dsvHeap = nullptr;
-	ID3D12Resource* m_renderTargets[FRAME_COUNT] = {};
-	ID3D12Resource* m_depthStencilView = nullptr;
+	ID3D12Resource* m_backBufferRtv[FRAME_COUNT] = {};
+	ID3D12Resource* m_indexRtv = nullptr;
+	ID3D12Resource* m_mainDsv = nullptr;
 	ID3D12Fence* m_fence = nullptr;
 	uint32 m_swapChainFlag = 0;
 	uint32 m_frameIdx = 0;

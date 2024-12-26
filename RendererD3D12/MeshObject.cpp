@@ -53,16 +53,21 @@ void MeshObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matr
 	ID3D12DescriptorHeap* descHeap = descPool->GetDesciptorHeap();
 
 	ConstantBuffer* constantBuffer = cbPool->Alloc();
+	
+	printf("%p ", constantBuffer);
+
+	MESH_CONST_DATA constData = {};
+
 	if (constantBuffer)
 	{
 		Matrix viewMat, projMat;
 		m_renderer->GetViewProjMatrix(&viewMat, &projMat);
 
-		m_constData.world = worldRow.Transpose();
-		m_constData.view = viewMat;
-		m_constData.projection = projMat;
+		constData.world = worldRow.Transpose();
+		constData.view = viewMat;
+		constData.projection = projMat;
 
-		constantBuffer->Upload(&m_constData);
+		constantBuffer->Upload(&constData);
 	}
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuHandle = {};
@@ -96,7 +101,7 @@ void MeshObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matr
 	}
 }
 
-void MeshObject::CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle)
+void MeshObject::CreateMeshBuffers(const MeshData* meshData, const uint32 numMeshes)
 {
 	ResourceManager* resoureManager = m_renderer->GetReourceManager();
 
@@ -104,9 +109,6 @@ void MeshObject::CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle)
 	ID3D12Resource* indexBuffer = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
 	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
-
-	MeshData* meshDatas = mgHandle->meshes;
-	uint32 numMeshes = mgHandle->numMeshes;
 
 	if (numMeshes > MAX_MESH_DATA_COUNT_PER_OBJ)
 	{
@@ -118,18 +120,18 @@ void MeshObject::CreateMeshBuffers(MESH_GROUP_HANDLE* mgHandle)
 
 	for (uint32 i = 0; i < numMeshes; i++)
 	{
-		resoureManager->CreateVertexBuffer(sizeof(Vertex), meshDatas[i].numVertices, meshDatas[i].vertices, &vertexBufferView, &vertexBuffer);
+		resoureManager->CreateVertexBuffer(sizeof(Vertex), meshData[i].numVertices, meshData[i].vertices, &vertexBufferView, &vertexBuffer);
 		meshes[i].vertexBuffer = vertexBuffer;
 		meshes[i].vertexBufferView = vertexBufferView;
 
-		resoureManager->CreateIndexBuffer(sizeof(uint32), meshDatas[i].numIndices, meshDatas[i].indices, &indexBufferView, &indexBuffer);
+		resoureManager->CreateIndexBuffer(sizeof(uint32), meshData[i].numIndices, meshData[i].indices, &indexBufferView, &indexBuffer);
 		meshes[i].indexBuffer = indexBuffer;
 		meshes[i].indexBufferView = indexBufferView;
-		meshes[i].numIndices = meshDatas[i].numIndices;
+		meshes[i].numIndices = meshData[i].numIndices;
 
-		if (wcslen(meshDatas[i].textureFileaname))
+		if (wcslen(meshData[i].textureFileaname))
 		{
-			meshes[i].textureHandle = (TEXTURE_HANDLE*)m_renderer->CreateTextureFromFile(meshDatas[i].textureFileaname);
+			meshes[i].textureHandle = (TEXTURE_HANDLE*)m_renderer->CreateTextureFromFile(meshData[i].textureFileaname);
 		}
 		else
 		{
