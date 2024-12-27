@@ -9,7 +9,6 @@ Mesh Object
 */
 
 class Renderer;
-class ConstantBuffer;
 
 class MeshObject : public IT_MeshObject
 {

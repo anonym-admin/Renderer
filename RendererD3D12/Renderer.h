@@ -1,6 +1,6 @@
 #pragma once
 
-#define MULTI_THREAD_RENDERING 1
+#define MULTI_THREAD_RENDERING 0
 
 #include "../../Interface/IT_Renderer.h"
 

@@ -6,7 +6,14 @@ ConstantBufferPool
 ===================
 */
 
-class ConstantBuffer;
+// class ConstantBuffer;
+
+struct ConstantBuffer
+{
+	uint8* sysMemAddr = nullptr;
+	D3D12_GPU_VIRTUAL_ADDRESS gpuMemAddr;
+	D3D12_CPU_DESCRIPTOR_HANDLE cbvCpuHandle = {};
+};
 
 class ConstantBufferPool
 {
@@ -22,9 +29,12 @@ public:
 
 private:
 	ID3D12DescriptorHeap* m_descriptorHeap = nullptr;
-	ConstantBuffer** m_constantBuffer = nullptr;
 	uint32 m_allocatedSize = 0;
 	uint32 m_maxNumCbv = 0;
-	uint32 m_typeSize = 0;
+	uint32 m_heapTypeSize = 0;
+
+	ID3D12Resource* m_cbResource = nullptr;
+	ConstantBuffer* m_cb = nullptr;
+	uint8* m_sysMemArr = nullptr;
 };
 

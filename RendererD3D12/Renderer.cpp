@@ -787,7 +787,7 @@ void Renderer::CreateDepthStencilView(uint32 width, uint32 height)
 		D3D12_TEXTURE_LAYOUT_UNKNOWN,
 		D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
-	ThrowIfFailed(m_device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, &depthOptimizedClearValue, IID_PPV_ARGS(&m_mainDsv)));
+	ThrowIfFailed(m_device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &depthOptimizedClearValue, IID_PPV_ARGS(&m_mainDsv)));
 	ThrowIfFailed(m_mainDsv->SetName(L"Renderer::depthStencilView"));
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_dsvHeap->GetCPUDescriptorHandleForHeapStart());

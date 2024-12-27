@@ -13,9 +13,6 @@
     <ClCompile Include="pch.cpp">
       <Filter>Main</Filter>
     </ClCompile>
-    <ClCompile Include="ConstantBuffer.cpp">
-      <Filter>Main</Filter>
-    </ClCompile>
     <ClCompile Include="DescriptorAllocator.cpp">
       <Filter>Main</Filter>
     </ClCompile>
@@ -79,9 +76,6 @@
       <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="RendererType.h">
-      <Filter>Main</Filter>
-    </ClInclude>
-    <ClInclude Include="ConstantBuffer.h">
       <Filter>Main</Filter>
     </ClInclude>
     <ClInclude Include="DescriptorAllocator.h">

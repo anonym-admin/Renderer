@@ -4,7 +4,6 @@
 #include "ResourceManager.h"
 #include "ConstantBufferManager.h"
 #include "ConstantBufferPool.h"
-#include "ConstantBuffer.h"
 #include "DescriptorPool.h"
 
 /*
@@ -141,7 +140,7 @@ void SpriteObject::DrawWithTexture(ID3D12GraphicsCommandList* cmdList, uint32 th
 		constData.depthZ = z;
 		constData.alpha = 1.0f;
 
-		constantBuffer->Upload(&constData);
+		memcpy(constantBuffer->sysMemAddr, &constData, sizeof(SPRITE_CONST_DATA));
 	}
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuHandle = {};
@@ -152,7 +151,7 @@ void SpriteObject::DrawWithTexture(ID3D12GraphicsCommandList* cmdList, uint32 th
 	cmdList->SetPipelineState(sm_pipelineState);
 	cmdList->SetDescriptorHeaps(1, &descHeap);
 
-	device->CopyDescriptorsSimple(1, cpuHandle, constantBuffer->GetCbvHandle(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	device->CopyDescriptorsSimple(1, cpuHandle, constantBuffer->cbvCpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	cpuHandle.Offset(1, descPool->GetTypeSize());
 	if (srv.ptr)
 	{

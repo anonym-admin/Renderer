@@ -169,7 +169,6 @@
     <ClInclude Include="..\..\Common\Vertex.h" />
     <ClInclude Include="..\..\Interface\IT_Renderer.h" />
     <ClInclude Include="CommandContext.h" />
-    <ClInclude Include="ConstantBuffer.h" />
     <ClInclude Include="ConstantBufferManager.h" />
     <ClInclude Include="ConstantBufferPool.h" />
     <ClInclude Include="D3DUtils.h" />
@@ -189,7 +188,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CommandContext.cpp" />
-    <ClCompile Include="ConstantBuffer.cpp" />
     <ClCompile Include="ConstantBufferManager.cpp" />
     <ClCompile Include="ConstantBufferPool.cpp" />
     <ClCompile Include="D3DUtils.cpp" />

@@ -9,7 +9,6 @@ LineObject
 */
 
 class Renderer;
-class ConstantBuffer;
 
 class LineObject : public IT_LineObject
 {

@@ -5,7 +5,6 @@
 #include "DescriptorPool.h"
 #include "ConstantBufferPool.h"
 #include "ConstantBufferManager.h"
-#include "ConstantBuffer.h"
 
 /*
 ================
@@ -50,17 +49,18 @@ void LineObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matr
 	DescriptorPool* descPool = m_renderer->GetDescriptorPool(threadIdx);
 	ID3D12DescriptorHeap* descHeap = descPool->GetDesciptorHeap();
 
+	MESH_CONST_DATA constData = {};
 	ConstantBuffer* constantBuffer = cbPool->Alloc();
 	if (constantBuffer)
 	{
 		Matrix viewMat, projMat;
 		m_renderer->GetViewProjMatrix(&viewMat, &projMat);
 
-		m_constData.world = worldRow.Transpose();
-		m_constData.view = viewMat;
-		m_constData.projection = projMat;
+		constData.world = worldRow.Transpose();
+		constData.view = viewMat;
+		constData.projection = projMat;
 
-		constantBuffer->Upload(&m_constData);
+		memcpy(constantBuffer->sysMemAddr, &constData, sizeof(MESH_CONST_DATA));
 	}
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuHandle = {};
@@ -71,7 +71,7 @@ void LineObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matr
 	cmdList->SetPipelineState(sm_pipelineState);
 	cmdList->SetDescriptorHeaps(1, &descHeap);
 
-	device->CopyDescriptorsSimple(1, cpuHandle, constantBuffer->GetCbvHandle(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	device->CopyDescriptorsSimple(1, cpuHandle, constantBuffer->cbvCpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	cmdList->SetGraphicsRootDescriptorTable(0, gpuHandle);
 	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);

@@ -2,7 +2,6 @@
 #include "MeshObject.h"
 #include "Renderer.h"
 #include "ResourceManager.h"
-#include "ConstantBuffer.h"
 #include "ConstantBufferPool.h"
 #include "ConstantBufferManager.h"
 #include "DescriptorAllocator.h"
@@ -52,20 +51,26 @@ void MeshObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matr
 	DescriptorPool* descPool = m_renderer->GetDescriptorPool(threadIdx);
 	ID3D12DescriptorHeap* descHeap = descPool->GetDesciptorHeap();
 
-	ConstantBuffer* constantBuffer = cbPool->Alloc();
-	MESH_CONST_DATA constData = {};
+	ConstantBuffer* cb = cbPool->Alloc();
+	MESH_CONST_DATA cbData = {};
 
-	if (constantBuffer)
+	if (!cb)
 	{
-		Matrix viewMat, projMat;
-		m_renderer->GetViewProjMatrix(&viewMat, &projMat);
-
-		constData.world = worldRow.Transpose();
-		constData.view = viewMat;
-		constData.projection = projMat;
-
-		constantBuffer->Upload(&constData);
+		__debugbreak();
 	}
+
+	Matrix viewMat, projMat;
+	m_renderer->GetViewProjMatrix(&viewMat, &projMat);
+
+	cbData.world = worldRow.Transpose();
+	cbData.view = viewMat;
+	cbData.projection = projMat;
+
+	MESH_CONST_DATA* cbPtr = reinterpret_cast<MESH_CONST_DATA*>(cb->sysMemAddr);
+
+	cbPtr->world = cbData.world;
+	cbPtr->view = cbData.view;
+	cbPtr->projection = cbData.projection;
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuHandle = {};
 	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuHandle = {};
@@ -75,7 +80,7 @@ void MeshObject::Draw(ID3D12GraphicsCommandList* cmdList, uint32 threadIdx, Matr
 	cmdList->SetPipelineState(isWire ? sm_wirePSO : sm_defaultPSO);
 	cmdList->SetDescriptorHeaps(1, &descHeap);
 
-	device->CopyDescriptorsSimple(1, cpuHandle, constantBuffer->GetCbvHandle(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	device->CopyDescriptorsSimple(1, cpuHandle, cb->cbvCpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	cpuHandle.Offset(1, descPool->GetTypeSize());
 	for (uint32 i = 0; i < m_numMeshes; i++)
 	{
